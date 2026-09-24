@@ -1,0 +1,41 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function active() {
+      return request.auth != null && request.auth.token.isActive == true;
+    }
+
+    function sameShop(shopId) {
+      return active() && request.auth.token.shopId == shopId;
+    }
+
+    match /shops/{shopId}/vehicles/{vehicleId}/{fileName} {
+      allow read: if sameShop(shopId);
+      allow write: if sameShop(shopId)
+        && request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+      allow delete: if sameShop(shopId);
+    }
+
+    match /shops/{shopId}/jobCards/{jobCardId}/{fileName} {
+      allow read: if sameShop(shopId);
+      allow write: if sameShop(shopId)
+        && request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+      allow delete: if sameShop(shopId);
+    }
+
+    match /shops/{shopId}/documents/{fileName} {
+      allow read: if sameShop(shopId);
+      allow write: if sameShop(shopId)
+        && request.resource.size < 20 * 1024 * 1024
+        && request.resource.contentType == 'application/pdf';
+      allow delete: if sameShop(shopId);
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

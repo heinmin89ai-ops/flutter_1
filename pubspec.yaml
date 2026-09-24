@@ -1,0 +1,33 @@
+name: workshop_ops
+publish_to: "none"
+
+description: Offline-first multi-tenant car workshop management system.
+version: 0.1.0+1
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+  flutter: ">=3.19.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.6
+  firebase_auth: ^5.3.1
+  firebase_core: ^3.8.1
+  cloud_firestore: ^5.5.0
+  cloud_functions: ^5.1.3
+  path: ^1.9.0
+  sqflite: ^2.4.1
+  uuid: ^4.5.1
+  connectivity_plus: ^6.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  integration_test:
+    sdk: flutter
+  flutter_lints: ^3.0.1
+
+flutter:
+  uses-material-design: true

@@ -1,0 +1,103 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function active() {
+      return signedIn() && request.auth.token.isActive == true;
+    }
+
+    function isSuperAdmin() {
+      return active() && request.auth.token.role == 'SUPER_ADMIN';
+    }
+
+    function hasShop(shopId) {
+      return active() && request.auth.token.shopId == shopId;
+    }
+
+    function isOwner(shopId) {
+      return hasShop(shopId) && request.auth.token.role == 'SHOP_OWNER';
+    }
+
+    match /shops/{shopId} {
+      allow read: if isSuperAdmin() || hasShop(shopId);
+      allow update: if isOwner(shopId)
+        && request.resource.data.shopId == resource.data.shopId
+        && request.resource.data.isActive == resource.data.isActive;
+      allow create, delete: if false;
+    }
+
+    match /users/{uid} {
+      allow read: if isSuperAdmin()
+        || (active() && resource.data.shopId == request.auth.token.shopId);
+      allow write: if false;
+    }
+
+    match /customers/{customerId} {
+      allow read: if signedIn() && hasShop(resource.data.shopId);
+      allow create: if signedIn() && hasShop(request.resource.data.shopId);
+      allow update: if signedIn()
+        && hasShop(resource.data.shopId)
+        && request.resource.data.shopId == resource.data.shopId;
+      allow delete: if isOwner(resource.data.shopId);
+    }
+
+    match /vehicles/{vehicleId} {
+      allow read: if signedIn() && hasShop(resource.data.shopId);
+      allow create: if signedIn() && hasShop(request.resource.data.shopId)
+        && request.resource.data.normalizedLicensePlate is string;
+      allow update: if signedIn()
+        && hasShop(resource.data.shopId)
+        && request.resource.data.shopId == resource.data.shopId
+        && request.resource.data.normalizedLicensePlate is string;
+      allow delete: if isOwner(resource.data.shopId);
+    }
+
+    match /jobCards/{jobCardId} {
+      allow read: if signedIn() && hasShop(resource.data.shopId);
+      allow create: if signedIn()
+        && hasShop(request.resource.data.shopId)
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.status == 'DRAFT';
+      allow update, delete: if false;
+    }
+
+    match /inventoryItems/{inventoryItemId} {
+      allow read: if signedIn() && hasShop(resource.data.shopId);
+      allow create: if isOwner(request.resource.data.shopId) || (hasShop(request.resource.data.shopId) && request.auth.token.role == 'MANAGER');
+      allow update, delete: if false;
+    }
+
+    match /inventoryMovements/{movementId} {
+      allow read: if signedIn() && hasShop(resource.data.shopId);
+      allow write: if false;
+    }
+
+    match /warranties/{warrantyId} {
+      allow read: if signedIn() && hasShop(resource.data.shopId);
+      allow write: if false;
+    }
+
+    match /invoices/{invoiceId} {
+      allow read: if signedIn() && hasShop(resource.data.shopId);
+      allow write: if false;
+    }
+
+    match /payments/{paymentId} {
+      allow read: if signedIn() && hasShop(resource.data.shopId);
+      allow write: if false;
+    }
+
+    match /auditLogs/{auditId} {
+      allow read: if signedIn() && (isSuperAdmin() || hasShop(resource.data.shopId));
+      allow write: if false;
+    }
+
+    match /{collection}/{documentId} {
+      allow read, write: if false;
+    }
+  }
+}
