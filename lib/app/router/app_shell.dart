@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/errors/localized_failure.dart';
 import '../../core/sync/sync_status.dart';
 import '../../features/dashboard/presentation/dashboard_page.dart';
 import '../../features/customers_vehicles/domain/customer_vehicle_repository.dart';
@@ -127,6 +128,79 @@ class _AppShellState extends State<AppShell> {
     return sections;
   }
 
+  Future<void> _showChangePasswordDialog(AppLocalizations l10n) async {
+    final currentController = TextEditingController();
+    final nextController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    String? failureText;
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final error = failureText;
+          return AlertDialog(
+            title: Text(l10n.changePassword),
+            content: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextFormField(
+                    controller: currentController,
+                    obscureText: true,
+                    decoration: InputDecoration(labelText: l10n.currentPasswordLabel),
+                    validator: (value) => value == null || value.isEmpty ? l10n.validationEnterPassword : null,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: nextController,
+                    obscureText: true,
+                    decoration: InputDecoration(labelText: l10n.newPasswordLabel),
+                    validator: (value) => value == null || value.length < 8 ? l10n.authWeakPassword : null,
+                  ),
+                  if (error != null) ...[
+                    const SizedBox(height: 12),
+                    Text(error, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                  ],
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(dialogContext), child: Text(l10n.cancel)),
+              FilledButton(
+                onPressed: () async {
+                  if (!formKey.currentState!.validate()) return;
+                  try {
+                    await widget.authRepository.changePassword(
+                      currentPassword: currentController.text,
+                      newPassword: nextController.text,
+                    );
+                    if (dialogContext.mounted) {
+                      Navigator.pop(dialogContext);
+                      ScaffoldMessenger.of(dialogContext).showSnackBar(
+                        SnackBar(content: Text(l10n.passwordUpdated)),
+                      );
+                    }
+                  } on LocalizedFailure catch (error) {
+                    if (dialogContext.mounted) {
+                      setDialogState(() => failureText = localizedFailureMessage(
+                            AppLocalizations.of(dialogContext),
+                            error,
+                          ));
+                    }
+                  }
+                },
+                child: Text(l10n.updatePassword),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+    currentController.dispose();
+    nextController.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -152,6 +226,8 @@ class _AppShellState extends State<AppShell> {
                 widget.authRepository.signOut();
               } else if (value == 'language') {
                 localeController.toggle();
+              } else if (value == 'password') {
+                _showChangePasswordDialog(l10n);
               }
             },
             itemBuilder: (context) => [
@@ -173,6 +249,15 @@ class _AppShellState extends State<AppShell> {
                   leading: const Icon(Icons.translate),
                   title: Text(l10n.languageMenuLabel),
                   subtitle: Text(localeController.isBurmese ? 'English' : 'မြန်မာ'),
+                ),
+              ),
+              const PopupMenuDivider(),
+              PopupMenuItem<String>(
+                value: 'password',
+                child: ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.lock_outline),
+                  title: Text(l10n.changePassword),
                 ),
               ),
               const PopupMenuDivider(),

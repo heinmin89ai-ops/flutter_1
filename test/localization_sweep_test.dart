@@ -9,6 +9,7 @@ import 'package:workshop_ops/core/sync/sync_status.dart';
 import 'package:workshop_ops/l10n/app_localizations.dart';
 import 'package:workshop_ops/features/auth/domain/auth_repository.dart';
 import 'package:workshop_ops/features/auth/domain/auth_user.dart';
+import 'package:workshop_ops/features/auth/presentation/login_page.dart';
 import 'package:workshop_ops/features/shops/domain/shop_repository.dart';
 import 'package:workshop_ops/features/shops/domain/staff_repository.dart';
 import 'package:workshop_ops/features/shops/domain/shop.dart';
@@ -27,6 +28,7 @@ import 'package:workshop_ops/features/billing/domain/billing_repository.dart';
 import 'package:workshop_ops/features/billing/domain/invoice.dart';
 import 'package:workshop_ops/features/reports/domain/report_repository.dart';
 import 'package:workshop_ops/features/reports/domain/workshop_report.dart';
+import 'package:workshop_ops/features/shops/domain/staff_invitation.dart';
 
 class _SignedInAuthRepository implements AuthRepository {
   final _user = const AuthUser(
@@ -44,6 +46,12 @@ class _SignedInAuthRepository implements AuthRepository {
 
   @override
   Future<AuthUser> signIn({required String email, required String password}) async => _user;
+
+  @override
+  Future<AuthUser> activate({required String email, required String password, required String invitationCode}) async => _user;
+
+  @override
+  Future<void> changePassword({required String currentPassword, required String newPassword}) async {}
 
   @override
   Future<void> signOut() async {}
@@ -78,10 +86,33 @@ class _SeededShopRepository implements ShopRepository {
 
 class _SeededStaffRepository implements StaffRepository {
   @override
-  Future<void> createStaff({required String shopId, required String email, required String name, required UserRole role}) async {}
+  Future<StaffInvitation> createStaff({required String shopId, required String email, required String name, required UserRole role}) async => StaffInvitation(
+    code: 'ABCD2345EF',
+    email: email,
+    name: name,
+    role: role,
+    temporaryPassword: 'km2xw7npq4rt',
+  );
+
+  @override
+  Future<void> cancelInvitation({required String code}) async {}
+
+  @override
+  Future<void> sendPasswordReset({required String email}) async {}
 
   @override
   Future<void> updateStaff({required String shopId, required String uid, required UserRole role, required bool isActive}) async {}
+
+  @override
+  Stream<List<StaffInvitation>> watchInvitations(String shopId) => Stream.value(const [
+    StaffInvitation(
+      code: 'ABCD2345EF',
+      email: 'win@example.com',
+      name: 'Ko Win',
+      role: UserRole.mechanic,
+      temporaryPassword: '',
+    ),
+  ]);
 
   @override
   Stream<List<StaffMember>> watchStaff(String shopId) => Stream.value(const [
@@ -350,6 +381,57 @@ void main() {
         tester.state<NavigatorState>(find.byType(Navigator)).pop();
         await tester.pumpAndSettle();
       }
+    });
+
+    testWidgets('staff invitation details lay out cleanly in ${entry.name}', (tester) async {
+      final l10n = await AppLocalizations.delegate.load(entry.locale);
+      await _launchOnPhone(tester, entry.locale);
+      await _openSection(tester, ShellSection.shops);
+
+      expect(find.text(l10n.pendingInvitationsTitle), findsOneWidget);
+
+      await tester.tap(find.text(l10n.shopsAddStaff));
+      await tester.pumpAndSettle();
+      final fields = find.byType(TextFormField);
+      await tester.enterText(fields.at(0), 'Ko Win');
+      await tester.enterText(fields.at(1), 'win@example.com');
+      await tester.tap(find.text(l10n.create));
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull, reason: 'invitation dialog in ${entry.name}');
+      expect(find.text('ABCD2345EF'), findsOneWidget);
+      expect(find.text(l10n.temporaryPasswordLabel), findsOneWidget);
+
+      await tester.tap(find.text(l10n.done));
+      await tester.pumpAndSettle();
+      expect(find.byType(AlertDialog), findsNothing);
+    });
+
+    testWidgets('account activation screen lays out cleanly in ${entry.name}', (tester) async {
+      final l10n = await AppLocalizations.delegate.load(entry.locale);
+      tester.view.physicalSize = const Size(360, 800) * 3;
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(MaterialApp(
+        locale: entry.locale,
+        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        home: LoginPage(authRepository: _SignedInAuthRepository()),
+      ));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text(l10n.haveAnInvitation));
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull, reason: 'activation mode in ${entry.name}');
+      expect(find.text(l10n.activateAccountTitle), findsOneWidget);
+      expect(find.text(l10n.invitationCodeLabel), findsOneWidget);
+      expect(find.text(l10n.confirmPasswordLabel), findsOneWidget);
+
+      await tester.tap(find.text(l10n.activateAccount));
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.validationEnterPassword), findsWidgets);
     });
   }
 

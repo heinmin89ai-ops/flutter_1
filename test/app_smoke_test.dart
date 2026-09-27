@@ -21,6 +21,7 @@ import 'package:workshop_ops/features/billing/domain/billing_repository.dart';
 import 'package:workshop_ops/features/billing/domain/invoice.dart';
 import 'package:workshop_ops/features/reports/domain/report_repository.dart';
 import 'package:workshop_ops/features/reports/domain/workshop_report.dart';
+import 'package:workshop_ops/features/shops/domain/staff_invitation.dart';
 
 class _SignedInAuthRepository implements AuthRepository {
   final _user = const AuthUser(
@@ -38,6 +39,12 @@ class _SignedInAuthRepository implements AuthRepository {
 
   @override
   Future<AuthUser> signIn({required String email, required String password}) async => _user;
+
+  @override
+  Future<AuthUser> activate({required String email, required String password, required String invitationCode}) async => _user;
+
+  @override
+  Future<void> changePassword({required String currentPassword, required String newPassword}) async {}
 
   @override
   Future<void> signOut() async {}
@@ -59,10 +66,19 @@ class _EmptyShopRepository implements ShopRepository {
 
 class _EmptyStaffRepository implements StaffRepository {
   @override
-  Future<void> createStaff({required String shopId, required String email, required String name, required UserRole role}) => throw UnimplementedError();
+  Future<StaffInvitation> createStaff({required String shopId, required String email, required String name, required UserRole role}) => throw UnimplementedError();
+
+  @override
+  Future<void> cancelInvitation({required String code}) => throw UnimplementedError();
+
+  @override
+  Future<void> sendPasswordReset({required String email}) => throw UnimplementedError();
 
   @override
   Future<void> updateStaff({required String shopId, required String uid, required UserRole role, required bool isActive}) => throw UnimplementedError();
+
+  @override
+  Stream<List<StaffInvitation>> watchInvitations(String shopId) => Stream.value(const <StaffInvitation>[]);
 
   @override
   Stream<List<StaffMember>> watchStaff(String shopId) => Stream.value(const <StaffMember>[]);

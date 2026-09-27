@@ -6,20 +6,44 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // Tenant authority is read from the staff profile document rather than
+    // ID-token claims: custom claims can only be written by the Admin SDK,
+    // which requires a paid plan. Repeated get() calls are served from the
+    // per-request cache, so this costs one document read per request.
+    function profile() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
     function active() {
-      return signedIn() && request.auth.token.isActive == true;
+      return signedIn() && profile().exists && profile().data.isActive != false;
+    }
+
+    function role() {
+      return profile().data.role;
+    }
+
+    function shopOf() {
+      return profile().data.shopId;
     }
 
     function isSuperAdmin() {
-      return active() && request.auth.token.role == 'SUPER_ADMIN';
+      return active() && role() == 'SUPER_ADMIN';
     }
 
     function hasShop(shopId) {
-      return active() && request.auth.token.shopId == shopId;
+      return active() && shopOf() == shopId;
     }
 
     function isOwner(shopId) {
-      return hasShop(shopId) && request.auth.token.role == 'SHOP_OWNER';
+      return hasShop(shopId) && role() == 'SHOP_OWNER';
+    }
+
+    function isManager(shopId) {
+      return hasShop(shopId) && (role() == 'MANAGER' || role() == 'SHOP_OWNER');
+    }
+
+    function invitation(id) {
+      return get(/databases/$(database)/documents/staffInvitations/$(id));
     }
 
     match /shops/{shopId} {
@@ -32,8 +56,63 @@ service cloud.firestore {
 
     match /users/{uid} {
       allow read: if isSuperAdmin()
-        || (active() && resource.data.shopId == request.auth.token.shopId);
-      allow write: if false;
+        || (active() && shopOf() == resource.data.shopId);
+
+      // A new staff member creates their own profile by presenting the
+      // invitation the workshop owner issued for their exact email address.
+      // Shop, role and name are copied from that invitation, never trusted
+      // from the client, so nobody can hand themselves a privileged role.
+      allow create: if signedIn()
+        && uid == request.auth.uid
+        && request.resource.data.uid == uid
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.isActive == true
+        && invitation(request.resource.data.invitationId).exists
+        && invitation(request.resource.data.invitationId).data.status == 'PENDING'
+        && invitation(request.resource.data.invitationId).data.email == request.auth.token.email
+        && invitation(request.resource.data.invitationId).data.shopId == request.resource.data.shopId
+        && invitation(request.resource.data.invitationId).data.role == request.resource.data.role
+        && invitation(request.resource.data.invitationId).data.name == request.resource.data.name;
+
+      // Owners manage the role and active state of their own staff. Nobody may
+      // edit their own privileges, which also blocks self-lockout, and no one
+      // can be promoted to SUPER_ADMIN.
+      allow update: if isOwner(resource.data.shopId)
+        && uid != request.auth.uid
+        && resource.data.role != 'SUPER_ADMIN'
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.shopId == resource.data.shopId
+        && request.resource.data.email == resource.data.email
+        && request.resource.data.role != 'SUPER_ADMIN';
+
+      allow delete: if false;
+    }
+
+    // The document id is a high-entropy code the owner shares out of band, so
+    // possession of the code plus the matching sign-in address is the claim.
+    match /staffInvitations/{invitationId} {
+      allow read: if (signedIn() && resource.data.email == request.auth.token.email)
+        || isOwner(resource.data.shopId);
+
+      allow create: if isOwner(request.resource.data.shopId)
+        && request.resource.data.status == 'PENDING'
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.role != 'SUPER_ADMIN';
+
+      allow update: if (
+          isOwner(resource.data.shopId)
+          && request.resource.data.email == resource.data.email
+          && request.resource.data.shopId == resource.data.shopId
+        )
+        || (
+          signedIn()
+          && request.auth.token.email == resource.data.email
+          && resource.data.status == 'PENDING'
+          && request.resource.data.status == 'CLAIMED'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'claimedAt'])
+        );
+
+      allow delete: if isOwner(resource.data.shopId);
     }
 
     match /customers/{customerId} {
@@ -67,7 +146,7 @@ service cloud.firestore {
 
     match /inventoryItems/{inventoryItemId} {
       allow read: if signedIn() && hasShop(resource.data.shopId);
-      allow create: if isOwner(request.resource.data.shopId) || (hasShop(request.resource.data.shopId) && request.auth.token.role == 'MANAGER');
+      allow create: if isManager(request.resource.data.shopId);
       allow update, delete: if false;
     }
 
@@ -92,7 +171,7 @@ service cloud.firestore {
     }
 
     match /auditLogs/{auditId} {
-      allow read: if signedIn() && (isSuperAdmin() || hasShop(resource.data.shopId));
+      allow read: if isSuperAdmin() || (signedIn() && hasShop(resource.data.shopId));
       allow write: if false;
     }
 

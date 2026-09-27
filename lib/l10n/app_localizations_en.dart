@@ -760,4 +760,133 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get errBillingUnavailable =>
       'Billing operation is temporarily unavailable.';
+
+  @override
+  String get currentPasswordLabel => 'Current password';
+
+  @override
+  String get newPasswordLabel => 'New password';
+
+  @override
+  String get changePassword => 'Change password';
+
+  @override
+  String get updatePassword => 'Update password';
+
+  @override
+  String get passwordUpdated => 'Your password has been updated.';
+
+  @override
+  String get validationEnterPassword => 'Enter a password.';
+
+  @override
+  String get authWeakPassword => 'Password must be at least 8 characters.';
+
+  @override
+  String get authReauthRequired => 'Please sign in again and try once more.';
+
+  @override
+  String get authPasswordChangeFailed =>
+      'Unable to change the password. Try again.';
+
+  @override
+  String get haveAnInvitation => 'Set up an account you were invited to';
+
+  @override
+  String get signInInstead => 'Back to sign in';
+
+  @override
+  String get activateAccountTitle => 'Set up your account';
+
+  @override
+  String get activateAccountSubtitle =>
+      'Enter the email and invitation code your workshop owner gave you, then choose a password.';
+
+  @override
+  String get invitationCodeLabel => 'Invitation code';
+
+  @override
+  String get confirmPasswordLabel => 'Confirm password';
+
+  @override
+  String get validationEnterInvitationCode => 'Enter your invitation code.';
+
+  @override
+  String get validationPasswordMismatch => 'The two passwords do not match.';
+
+  @override
+  String get activateAccount => 'Create my account';
+
+  @override
+  String get accountActivated => 'Welcome! Your account is ready.';
+
+  @override
+  String get done => 'Done';
+
+  @override
+  String get invitationCreatedTitle => 'Invitation created';
+
+  @override
+  String get invitationShareBody =>
+      'Share these details with your new staff member.';
+
+  @override
+  String get temporaryPasswordLabel => 'Suggested password';
+
+  @override
+  String get invitationActivationHint =>
+      'They may choose their own password while activating; this is only a starting point.';
+
+  @override
+  String get pendingInvitationsTitle => 'Waiting to be activated';
+
+  @override
+  String get viewInvitationCode => 'View code';
+
+  @override
+  String get cancelInvitation => 'Cancel invitation';
+
+  @override
+  String get invitationCancelled => 'The invitation has been cancelled.';
+
+  @override
+  String get sendResetLink => 'Send reset email';
+
+  @override
+  String get sendResetLinkTitle => 'Send a password reset email?';
+
+  @override
+  String get sendResetLinkBody =>
+      'They will receive an email from Firebase with a link to choose a new password.';
+
+  @override
+  String get resetEmailSent => 'A password reset email has been sent.';
+
+  @override
+  String get errInvitationNotFound =>
+      'This invitation code was not recognised for that email address.';
+
+  @override
+  String get errInvitationEmailMismatch =>
+      'This invitation was issued for a different email address.';
+
+  @override
+  String get errInvitationAlreadyClaimed =>
+      'This invitation has already been used. Sign in instead.';
+
+  @override
+  String get errEmailAlreadyInUse =>
+      'An account already exists for this email. Sign in instead.';
+
+  @override
+  String get errAccountActivationFailed =>
+      'Unable to activate your account. Please try again.';
+
+  @override
+  String get errResetEmailNotFound =>
+      'No staff account uses this email address yet.';
+
+  @override
+  String get errResetEmailFailed =>
+      'Unable to send the reset email. Try again.';
 }

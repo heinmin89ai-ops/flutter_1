@@ -6,6 +6,7 @@ Tenant-owned collections use a stable document ID and include `shopId`:
 
 - `shops/{shopId}`
 - `users/{uid}`
+- `staffInvitations/{code}`
 - `customers/{customerId}`
 - `vehicles/{vehicleId}`
 - `jobCards/{jobCardId}`
@@ -21,7 +22,7 @@ The backend derives sensitive totals, stock changes, warranty expiry, and claims
 
 ## Phase 3 access rules
 
-`shops/{shopId}`, `customers/{customerId}`, and `vehicles/{vehicleId}` are read through authenticated tenant claims. Shop settings updates preserve the existing tenant and active state. Direct client writes to staff profiles are denied; staff creation and role changes go through callable backend functions.
+`shops/{shopId}`, `customers/{customerId}`, and `vehicles/{vehicleId}` are read through the signed-in staff profile. Shop settings updates preserve the existing tenant and active state. A workshop owner writes staff role and active state directly on `users/{uid}`; new staff create their own profile by claiming a `staffInvitations/{code}` document.
 
 Phase 4 adds a local SQLite database with indexed `vehicles.normalizedLicensePlate`, `vehicles.shopId`, and `customers.shopId`. Firestore uses a composite index for vehicle synchronization by `shopId` and normalized plate.
 

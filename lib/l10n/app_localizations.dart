@@ -1495,6 +1495,240 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Billing operation is temporarily unavailable.'**
   String get errBillingUnavailable;
+
+  /// No description provided for @currentPasswordLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Current password'**
+  String get currentPasswordLabel;
+
+  /// No description provided for @newPasswordLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'New password'**
+  String get newPasswordLabel;
+
+  /// No description provided for @changePassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Change password'**
+  String get changePassword;
+
+  /// No description provided for @updatePassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Update password'**
+  String get updatePassword;
+
+  /// No description provided for @passwordUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Your password has been updated.'**
+  String get passwordUpdated;
+
+  /// No description provided for @validationEnterPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a password.'**
+  String get validationEnterPassword;
+
+  /// No description provided for @authWeakPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Password must be at least 8 characters.'**
+  String get authWeakPassword;
+
+  /// No description provided for @authReauthRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Please sign in again and try once more.'**
+  String get authReauthRequired;
+
+  /// No description provided for @authPasswordChangeFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to change the password. Try again.'**
+  String get authPasswordChangeFailed;
+
+  /// No description provided for @haveAnInvitation.
+  ///
+  /// In en, this message translates to:
+  /// **'Set up an account you were invited to'**
+  String get haveAnInvitation;
+
+  /// No description provided for @signInInstead.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to sign in'**
+  String get signInInstead;
+
+  /// No description provided for @activateAccountTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Set up your account'**
+  String get activateAccountTitle;
+
+  /// No description provided for @activateAccountSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the email and invitation code your workshop owner gave you, then choose a password.'**
+  String get activateAccountSubtitle;
+
+  /// No description provided for @invitationCodeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Invitation code'**
+  String get invitationCodeLabel;
+
+  /// No description provided for @confirmPasswordLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm password'**
+  String get confirmPasswordLabel;
+
+  /// No description provided for @validationEnterInvitationCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your invitation code.'**
+  String get validationEnterInvitationCode;
+
+  /// No description provided for @validationPasswordMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'The two passwords do not match.'**
+  String get validationPasswordMismatch;
+
+  /// No description provided for @activateAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Create my account'**
+  String get activateAccount;
+
+  /// No description provided for @accountActivated.
+  ///
+  /// In en, this message translates to:
+  /// **'Welcome! Your account is ready.'**
+  String get accountActivated;
+
+  /// No description provided for @done.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get done;
+
+  /// No description provided for @invitationCreatedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Invitation created'**
+  String get invitationCreatedTitle;
+
+  /// No description provided for @invitationShareBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Share these details with your new staff member.'**
+  String get invitationShareBody;
+
+  /// No description provided for @temporaryPasswordLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggested password'**
+  String get temporaryPasswordLabel;
+
+  /// No description provided for @invitationActivationHint.
+  ///
+  /// In en, this message translates to:
+  /// **'They may choose their own password while activating; this is only a starting point.'**
+  String get invitationActivationHint;
+
+  /// No description provided for @pendingInvitationsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting to be activated'**
+  String get pendingInvitationsTitle;
+
+  /// No description provided for @viewInvitationCode.
+  ///
+  /// In en, this message translates to:
+  /// **'View code'**
+  String get viewInvitationCode;
+
+  /// No description provided for @cancelInvitation.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel invitation'**
+  String get cancelInvitation;
+
+  /// No description provided for @invitationCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'The invitation has been cancelled.'**
+  String get invitationCancelled;
+
+  /// No description provided for @sendResetLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Send reset email'**
+  String get sendResetLink;
+
+  /// No description provided for @sendResetLinkTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Send a password reset email?'**
+  String get sendResetLinkTitle;
+
+  /// No description provided for @sendResetLinkBody.
+  ///
+  /// In en, this message translates to:
+  /// **'They will receive an email from Firebase with a link to choose a new password.'**
+  String get sendResetLinkBody;
+
+  /// No description provided for @resetEmailSent.
+  ///
+  /// In en, this message translates to:
+  /// **'A password reset email has been sent.'**
+  String get resetEmailSent;
+
+  /// No description provided for @errInvitationNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'This invitation code was not recognised for that email address.'**
+  String get errInvitationNotFound;
+
+  /// No description provided for @errInvitationEmailMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'This invitation was issued for a different email address.'**
+  String get errInvitationEmailMismatch;
+
+  /// No description provided for @errInvitationAlreadyClaimed.
+  ///
+  /// In en, this message translates to:
+  /// **'This invitation has already been used. Sign in instead.'**
+  String get errInvitationAlreadyClaimed;
+
+  /// No description provided for @errEmailAlreadyInUse.
+  ///
+  /// In en, this message translates to:
+  /// **'An account already exists for this email. Sign in instead.'**
+  String get errEmailAlreadyInUse;
+
+  /// No description provided for @errAccountActivationFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to activate your account. Please try again.'**
+  String get errAccountActivationFailed;
+
+  /// No description provided for @errResetEmailNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No staff account uses this email address yet.'**
+  String get errResetEmailNotFound;
+
+  /// No description provided for @errResetEmailFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to send the reset email. Try again.'**
+  String get errResetEmailFailed;
 }
 
 class _AppLocalizationsDelegate

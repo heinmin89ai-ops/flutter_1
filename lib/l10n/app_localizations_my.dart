@@ -770,4 +770,133 @@ class AppLocalizationsMy extends AppLocalizations {
   @override
   String get errBillingUnavailable =>
       'ငွေကြေး လုပ်ဆောင်မှုကို ယာယီ အသုံးမပြုနိုင်ပါ။';
+
+  @override
+  String get currentPasswordLabel => 'လက်ရှိစကားဝှက်';
+
+  @override
+  String get newPasswordLabel => 'စကားဝှက်အသစ်';
+
+  @override
+  String get changePassword => 'စကားဝှက် ပြောင်းလဲရန်';
+
+  @override
+  String get updatePassword => 'စကားဝှက် ပြင်ဆင်မည်';
+
+  @override
+  String get passwordUpdated => 'သင့်စကားဝှက်ကို ပြင်ဆင်ပြီးပါပြီ။';
+
+  @override
+  String get validationEnterPassword => 'စကားဝှက် ထည့်ပါ။';
+
+  @override
+  String get authWeakPassword => 'စကားဝှက်သည် အနည်းဆုံး ၈ လုံး ဖြစ်ရပါမည်။';
+
+  @override
+  String get authReauthRequired => 'ပြန်လည် ဝင်ရောက်ပြီး ထပ်မံကြိုးစားပါ။';
+
+  @override
+  String get authPasswordChangeFailed =>
+      'စကားဝှက်ကို မပြောင်းလဲနိုင်ပါ။ ထပ်မံကြိုးစားပါ။';
+
+  @override
+  String get haveAnInvitation => 'ဖိတ်ကြားခံထားရသော အကောင့်ကို ဖွင့်ရန်';
+
+  @override
+  String get signInInstead => 'ပြန်လည်ဝင်ရောက်ရန်';
+
+  @override
+  String get activateAccountTitle => 'သင့်အကောင့်ကို ဖွင့်ပါ';
+
+  @override
+  String get activateAccountSubtitle =>
+      'အလုပ်ရှင်က ပေးထားသော အီးမေးလ်နှင့် ဖိတ်ကြားကုဒ်ကို ထည့်ပါ၊ ပြီးနောက် စကားဝှက် ရွေးချယ်ပါ။';
+
+  @override
+  String get invitationCodeLabel => 'ဖိတ်ကြားကုဒ်';
+
+  @override
+  String get confirmPasswordLabel => 'စကားဝှက် အတည်ပြုရန်';
+
+  @override
+  String get validationEnterInvitationCode => 'ဖိတ်ကြားကုဒ်ကို ထည့်ပါ။';
+
+  @override
+  String get validationPasswordMismatch => 'စကားဝှက် နှစ်ခု မကိုက်ညီပါ။';
+
+  @override
+  String get activateAccount => 'အကောင့် ဖွင့်မည်';
+
+  @override
+  String get accountActivated => 'ကြိုဆိုပါသည်! သင့်အကောင့် အသင့်ဖြစ်ပါပြီ။';
+
+  @override
+  String get done => 'ပြီးပါပြီ';
+
+  @override
+  String get invitationCreatedTitle => 'ဖိတ်ကြားချက် ဖန်တီးပြီးပါပြီ';
+
+  @override
+  String get invitationShareBody =>
+      'ဤအချက်အလက်များကို ဝန်ထမ်းအသစ်ထံ ပို့ပေးပါ။';
+
+  @override
+  String get temporaryPasswordLabel => 'အကြံပြု စကားဝှက်';
+
+  @override
+  String get invitationActivationHint =>
+      'ဝန်ထမ်းသည် ဖွင့်လှစ်စဉ် စကားဝှက်ကို ကိုယ်တိုင်ပြောင်းနိုင်ပါသည်။';
+
+  @override
+  String get pendingInvitationsTitle => 'ဖွင့်လှစ်ရန် စောင့်ဆိုင်းနေသည်';
+
+  @override
+  String get viewInvitationCode => 'ကုဒ် ကြည့်ရန်';
+
+  @override
+  String get cancelInvitation => 'ဖိတ်ကြားချက် ပယ်ဖျက်ရန်';
+
+  @override
+  String get invitationCancelled => 'ဖိတ်ကြားချက်ကို ပယ်ဖျက်ပြီးပါပြီ။';
+
+  @override
+  String get sendResetLink => 'စကားဝှက်ပြန်စာ ပို့ရန်';
+
+  @override
+  String get sendResetLinkTitle => 'စကားဝှက် ပြန်သတ်မှတ်ရန် အီးမေးလ် ပို့မလား?';
+
+  @override
+  String get sendResetLinkBody =>
+      'Firebase မှ အီးမေးလ်တစ်စောင် ပို့ပြီး စကားဝှက်အသစ် သတ်မှတ်နိုင်မည်ဖြစ်သည်။';
+
+  @override
+  String get resetEmailSent =>
+      'စကားဝှက် ပြန်သတ်မှတ်ရန် အီးမေးလ် ပို့ပြီးပါပြီ။';
+
+  @override
+  String get errInvitationNotFound =>
+      'ဤဖိတ်ကြားကုဒ်ကို အီးမေးလ်နှင့် မတွေ့ရပါ။';
+
+  @override
+  String get errInvitationEmailMismatch =>
+      'ဤဖိတ်ကြားချက်ကို အခြားအီးမေးလ်ဖြင့် ဖိတ်ကြားထားပါသည်။';
+
+  @override
+  String get errInvitationAlreadyClaimed =>
+      'ဤဖိတ်ကြားကုဒ်ကို သုံးပြီးပါပြီ။ ဝင်ရောက်အသုံးပြုပါ။';
+
+  @override
+  String get errEmailAlreadyInUse =>
+      'ဤအီးမေးလ်အတွက် အကောင့်ရှိပြီးဖြစ်ပါသည်။ ဝင်ရောက်အသုံးပြုပါ။';
+
+  @override
+  String get errAccountActivationFailed =>
+      'အကောင့်ကို ဖွင့်လှစ်၍ မရပါ။ ထပ်မံကြိုးစားပါ။';
+
+  @override
+  String get errResetEmailNotFound =>
+      'ဤအီးမေးလ်ကို သုံးထားသော ဝန်ထမ်းအကောင့် မရှိသေးပါ။';
+
+  @override
+  String get errResetEmailFailed => 'အီးမေးလ် ပို့၍ မရပါ။ ထပ်မံကြိုးစားပါ။';
 }
