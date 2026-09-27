@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../../app/localization/enum_l10n.dart';
+import '../../../app/widgets/load_failure.dart';
 import '../../../app/widgets/page_header.dart';
 import '../../../core/errors/localized_failure.dart';
+import '../../../core/firestore/resilient_query.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../auth/domain/auth_user.dart';
 import '../data/firebase_warranty_repository.dart';
@@ -21,11 +23,10 @@ class WarrantyPage extends StatelessWidget {
     final shopId = user.shopId;
     if (shopId == null) return Center(child: Text(l10n.noWorkshopAssigned));
     return StreamBuilder<List<Warranty>>(
-      stream: repository.watchWarranties(shopId),
+      stream: resilientQuery(() => repository.watchWarranties(shopId)),
       builder: (context, snapshot) {
-        if (snapshot.hasError) return Center(child: Text(l10n.warrantyLoadError));
-        if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-        final warranties = snapshot.data!;
+        if (!snapshot.hasData && !snapshot.hasError) return const Center(child: CircularProgressIndicator());
+        final warranties = snapshot.data ?? const <Warranty>[];
         final canCreate = user.role == UserRole.shopOwner || user.role == UserRole.manager;
         return ListView(padding: const EdgeInsets.all(24), children: [
           PageHeader(
@@ -36,7 +37,9 @@ class WarrantyPage extends StatelessWidget {
                 : null,
           ),
           const SizedBox(height: 24),
-          if (warranties.isEmpty) Card(child: Padding(padding: const EdgeInsets.all(32), child: Center(child: Text(l10n.warrantyEmpty))))
+          if (snapshot.hasError)
+            LoadFailure(message: l10n.warrantyLoadError)
+          else if (warranties.isEmpty) Card(child: Padding(padding: const EdgeInsets.all(32), child: Center(child: Text(l10n.warrantyEmpty))))
           else ...warranties.map((warranty) => _WarrantyTile(warranty: warranty)),
         ]);
       },

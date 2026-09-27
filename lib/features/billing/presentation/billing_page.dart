@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../../app/localization/enum_l10n.dart';
+import '../../../app/widgets/load_failure.dart';
 import '../../../app/widgets/page_header.dart';
 import '../../../core/errors/localized_failure.dart';
+import '../../../core/firestore/resilient_query.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../auth/domain/auth_user.dart';
 import '../data/firebase_billing_repository.dart';
@@ -21,11 +23,10 @@ class BillingPage extends StatelessWidget {
     final shopId = user.shopId;
     if (shopId == null) return Center(child: Text(l10n.noWorkshopAssigned));
     return StreamBuilder<List<Invoice>>(
-      stream: repository.watchInvoices(shopId),
+      stream: resilientQuery(() => repository.watchInvoices(shopId)),
       builder: (context, snapshot) {
-        if (snapshot.hasError) return Center(child: Text(l10n.billingLoadError));
-        if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-        final invoices = snapshot.data!;
+        if (!snapshot.hasData && !snapshot.hasError) return const Center(child: CircularProgressIndicator());
+        final invoices = snapshot.data ?? const <Invoice>[];
         final canBill = user.role != UserRole.mechanic;
         return ListView(padding: const EdgeInsets.all(24), children: [
           PageHeader(
@@ -36,7 +37,9 @@ class BillingPage extends StatelessWidget {
                 : null,
           ),
           const SizedBox(height: 24),
-          if (invoices.isEmpty) Card(child: Padding(padding: const EdgeInsets.all(32), child: Center(child: Text(l10n.billingEmpty))))
+          if (snapshot.hasError)
+            LoadFailure(message: l10n.billingLoadError)
+          else if (invoices.isEmpty) Card(child: Padding(padding: const EdgeInsets.all(32), child: Center(child: Text(l10n.billingEmpty))))
           else ...invoices.map((invoice) => _InvoiceTile(invoice: invoice, canPay: canBill, onPayment: () => _receivePayment(context, shopId, invoice))),
         ]);
       },

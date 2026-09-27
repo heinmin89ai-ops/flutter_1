@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../app/localization/enum_l10n.dart';
+import '../../../app/widgets/load_failure.dart';
 import '../../../app/widgets/page_header.dart';
 import '../../../core/errors/localized_failure.dart';
+import '../../../core/firestore/resilient_query.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../auth/domain/auth_user.dart';
 import '../data/firebase_job_card_repository.dart';
@@ -22,11 +24,10 @@ class JobCardsPage extends StatelessWidget {
     final shopId = user.shopId;
     if (shopId == null) return Center(child: Text(l10n.noWorkshopAssigned));
     return StreamBuilder<List<JobCard>>(
-      stream: repository.watchJobCards(shopId),
+      stream: resilientQuery(() => repository.watchJobCards(shopId)),
       builder: (context, snapshot) {
-        if (snapshot.hasError) return Center(child: Text(l10n.jobCardsLoadError));
-        if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-        var jobCards = snapshot.data!;
+        if (!snapshot.hasData && !snapshot.hasError) return const Center(child: CircularProgressIndicator());
+        var jobCards = snapshot.data ?? const <JobCard>[];
         if (user.role == UserRole.mechanic) {
           jobCards = jobCards.where((job) => job.assignedMechanicIds.contains(user.uid)).toList();
         }
@@ -35,6 +36,7 @@ class JobCardsPage extends StatelessWidget {
           repository: repository,
           shopId: shopId,
           jobCards: jobCards,
+          loadFailed: snapshot.hasError,
         );
       },
     );
@@ -42,12 +44,19 @@ class JobCardsPage extends StatelessWidget {
 }
 
 class _JobCardsContent extends StatelessWidget {
-  const _JobCardsContent({required this.user, required this.repository, required this.shopId, required this.jobCards});
+  const _JobCardsContent({
+    required this.user,
+    required this.repository,
+    required this.shopId,
+    required this.jobCards,
+    this.loadFailed = false,
+  });
 
   final AuthUser user;
   final JobCardRepository repository;
   final String shopId;
   final List<JobCard> jobCards;
+  final bool loadFailed;
 
   @override
   Widget build(BuildContext context) {
@@ -68,7 +77,9 @@ class _JobCardsContent extends StatelessWidget {
               : null,
         ),
         const SizedBox(height: 24),
-        if (jobCards.isEmpty)
+        if (loadFailed)
+          LoadFailure(message: l10n.jobCardsLoadError)
+        else if (jobCards.isEmpty)
           Card(child: Padding(padding: const EdgeInsets.all(32), child: Center(child: Text(l10n.jobCardsEmpty))))
         else
           ...jobCards.map((jobCard) => _JobCardTile(user: user, repository: repository, shopId: shopId, jobCard: jobCard)),

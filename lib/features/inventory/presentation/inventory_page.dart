@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../app/localization/enum_l10n.dart';
+import '../../../app/widgets/load_failure.dart';
 import '../../../app/widgets/page_header.dart';
 import '../../../core/errors/localized_failure.dart';
+import '../../../core/firestore/resilient_query.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../auth/domain/auth_user.dart';
 import '../data/firebase_inventory_repository.dart';
@@ -23,23 +25,35 @@ class InventoryPage extends StatelessWidget {
     final shopId = user.shopId;
     if (shopId == null) return Center(child: Text(l10n.noWorkshopAssigned));
     return StreamBuilder<List<InventoryItem>>(
-      stream: repository.watchItems(shopId),
+      stream: resilientQuery(() => repository.watchItems(shopId)),
       builder: (context, snapshot) {
-        if (snapshot.hasError) return Center(child: Text(l10n.inventoryLoadError));
-        if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-        return _InventoryContent(user: user, shopId: shopId, items: snapshot.data!, repository: repository);
+        if (!snapshot.hasData && !snapshot.hasError) return const Center(child: CircularProgressIndicator());
+        return _InventoryContent(
+          user: user,
+          shopId: shopId,
+          items: snapshot.data ?? const <InventoryItem>[],
+          loadFailed: snapshot.hasError,
+          repository: repository,
+        );
       },
     );
   }
 }
 
 class _InventoryContent extends StatelessWidget {
-  const _InventoryContent({required this.user, required this.shopId, required this.items, required this.repository});
+  const _InventoryContent({
+    required this.user,
+    required this.shopId,
+    required this.items,
+    required this.repository,
+    this.loadFailed = false,
+  });
 
   final AuthUser user;
   final String shopId;
   final List<InventoryItem> items;
   final InventoryRepository repository;
+  final bool loadFailed;
 
   @override
   Widget build(BuildContext context) {
@@ -56,7 +70,9 @@ class _InventoryContent extends StatelessWidget {
               : null,
         ),
         const SizedBox(height: 24),
-        if (items.isEmpty)
+        if (loadFailed)
+          LoadFailure(message: l10n.inventoryLoadError)
+        else if (items.isEmpty)
           Card(child: Padding(padding: const EdgeInsets.all(32), child: Center(child: Text(l10n.inventoryEmpty))))
         else
           ...items.map((item) => _InventoryTile(item: item, canManage: canManage, onMovement: () => _recordMovement(context, item))),

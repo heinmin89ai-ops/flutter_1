@@ -232,6 +232,24 @@ class _SeededInventoryRepository implements InventoryRepository {
   ]);
 }
 
+class _ReadFailed implements Exception {
+  const _ReadFailed(this.message);
+
+  final String message;
+}
+
+class _FailingInventoryRepository implements InventoryRepository {
+  @override
+  Future<void> createItem(InventoryItem item) async {}
+
+  @override
+  Future<void> recordMovement({required String shopId, required String inventoryItemId, required InventoryMovementType type, required int quantity, required String reason}) async {}
+
+  @override
+  Stream<List<InventoryItem>> watchItems(String shopId) =>
+      Stream<List<InventoryItem>>.error(const _ReadFailed('inventory unavailable'));
+}
+
 class _SeededWarrantyRepository implements WarrantyRepository {
   @override
   Future<Warranty> createWarranty({required String shopId, required String jobCardId, required String vehicleId, required String customerId, required int durationMonths, required String terms}) async => Warranty(
@@ -309,7 +327,7 @@ class _SeededReportRepository implements ReportRepository {
   );
 }
 
-Future<void> _launchOnPhone(WidgetTester tester, Locale locale) async {
+Future<void> _launchOnPhone(WidgetTester tester, Locale locale, {InventoryRepository? inventoryRepository}) async {
   tester.view.physicalSize = const Size(360, 800) * 3;
   tester.view.devicePixelRatio = 3;
   addTearDown(tester.view.reset);
@@ -323,7 +341,7 @@ Future<void> _launchOnPhone(WidgetTester tester, Locale locale) async {
       staffRepository: _SeededStaffRepository(),
       customerVehicleRepository: _SeededCustomerVehicleRepository(),
       jobCardRepository: _SeededJobCardRepository(),
-      inventoryRepository: _SeededInventoryRepository(),
+      inventoryRepository: inventoryRepository ?? _SeededInventoryRepository(),
       warrantyRepository: _SeededWarrantyRepository(),
       billingRepository: _SeededBillingRepository(),
       reportRepository: _SeededReportRepository(),
@@ -464,5 +482,26 @@ void main() {
     expect(find.text(my.workshopOverview), findsOneWidget);
     expect(find.text(en.workshopOverview), findsNothing);
     expect(SyncStatus.pending.label(my), isNot(equals(SyncStatus.pending.label(en))));
+  });
+
+  testWidgets('a failed read keeps the create action reachable', (tester) async {
+    final en = await AppLocalizations.delegate.load(const Locale('en'));
+    await _launchOnPhone(tester, const Locale('en'), inventoryRepository: _FailingInventoryRepository());
+
+    tester.state<ScaffoldState>(find.byType(Scaffold)).openDrawer();
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(of: find.byType(Drawer), matching: find.byIcon(ShellSection.inventory.icon)),
+      warnIfMissed: false,
+    );
+    await tester.pump();
+    // Exhaust the re-subscribe attempts so the page settles on its error state.
+    for (var attempt = 0; attempt < 6; attempt++) {
+      await tester.pump(const Duration(seconds: 10));
+      await tester.pump();
+    }
+
+    expect(find.text(en.inventoryLoadError), findsOneWidget);
+    expect(find.text(en.inventoryAddItem), findsOneWidget);
   });
 }

@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../../app/localization/enum_l10n.dart';
 import '../../../app/widgets/page_header.dart';
+import '../../../core/firestore/resilient_query.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../auth/domain/auth_user.dart';
 import '../domain/customer.dart';
@@ -45,7 +46,7 @@ class _VehiclesPageState extends State<VehiclesPage> {
   @override
   void initState() {
     super.initState();
-    _vehicleSubscription = widget.repository.watchVehicles(_shopId).listen((vehicles) {
+    _vehicleSubscription = resilientQuery(() => widget.repository.watchVehicles(_shopId)).listen((vehicles) {
       if (!mounted || _isSearching) return;
       setState(() {
         _vehicles = vehicles;

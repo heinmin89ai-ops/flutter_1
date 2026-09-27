@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../../app/localization/enum_l10n.dart';
+import '../../../app/widgets/load_failure.dart';
 import '../../../app/widgets/page_header.dart';
 import '../../../core/errors/localized_failure.dart';
+import '../../../core/firestore/resilient_query.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../auth/domain/auth_user.dart';
 import '../data/firebase_shop_repository.dart';
@@ -54,11 +56,10 @@ class _PlatformShopsView extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return StreamBuilder<List<Shop>>(
-      stream: repository.watchAllShops(),
+      stream: resilientQuery(() => repository.watchAllShops()),
       builder: (context, snapshot) {
-        if (snapshot.hasError) return _ErrorState(message: l10n.shopsLoadWorkshopsError);
-        if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-        final shops = snapshot.data!;
+        if (!snapshot.hasData && !snapshot.hasError) return const Center(child: CircularProgressIndicator());
+        final shops = snapshot.data ?? const <Shop>[];
         return _PageFrame(
           title: l10n.shopsPlatformTitle,
           subtitle: l10n.shopsPlatformSubtitle,
@@ -67,7 +68,9 @@ class _PlatformShopsView extends StatelessWidget {
             icon: const Icon(Icons.add_business_outlined),
             label: Text(l10n.shopsCreateWorkshop),
           ),
-          child: shops.isEmpty
+          child: snapshot.hasError
+              ? LoadFailure(message: l10n.shopsLoadWorkshopsError)
+              : shops.isEmpty
               ? _EmptyState(message: l10n.shopsWorkshopsEmpty)
               : ListView.separated(
                   shrinkWrap: true,
@@ -149,15 +152,16 @@ class _ShopStaffView extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return StreamBuilder<Shop?>(
-      stream: shopRepository.watchShop(shopId),
+      stream: resilientQuery(() => shopRepository.watchShop(shopId)),
       builder: (context, shopSnapshot) {
-        if (shopSnapshot.hasError) return _ErrorState(message: l10n.shopsLoadSettingsError);
-        if (!shopSnapshot.hasData) return const Center(child: CircularProgressIndicator());
+        if (!shopSnapshot.hasData && !shopSnapshot.hasError) {
+          return const Center(child: CircularProgressIndicator());
+        }
         final shop = shopSnapshot.data;
-        if (shop == null) return _ErrorState(message: l10n.shopsNotFound);
+        if (shop == null && !shopSnapshot.hasError) return _ErrorState(message: l10n.shopsNotFound);
         return _PageFrame(
-          title: shop.name,
-          subtitle: '${shop.code} · ${shop.currency} · ${shop.timezone}',
+          title: shop?.name ?? l10n.navShopsStaff,
+          subtitle: shop == null ? '' : '${shop.code} · ${shop.currency} · ${shop.timezone}',
           action: canManageStaff
               ? FilledButton.icon(
                   onPressed: () => _showCreateStaffDialog(context),
@@ -168,12 +172,18 @@ class _ShopStaffView extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              if (shopSnapshot.hasError) ...[
+                LoadFailure(message: l10n.shopsLoadSettingsError),
+                const SizedBox(height: 8),
+              ],
               StreamBuilder<List<StaffMember>>(
-                stream: staffRepository.watchStaff(shopId),
+                stream: resilientQuery(() => staffRepository.watchStaff(shopId)),
                 builder: (context, staffSnapshot) {
-                  if (staffSnapshot.hasError) return _ErrorState(message: l10n.shopsLoadStaffError);
-                  if (!staffSnapshot.hasData) return const Center(child: CircularProgressIndicator());
-                  final staff = staffSnapshot.data!;
+                  if (!staffSnapshot.hasData && !staffSnapshot.hasError) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  final staff = staffSnapshot.data ?? const <StaffMember>[];
+                  if (staffSnapshot.hasError) return LoadFailure(message: l10n.shopsLoadStaffError);
                   if (staff.isEmpty) return _EmptyState(message: l10n.shopsStaffEmpty);
                   return Column(
                     children: [
@@ -198,7 +208,7 @@ class _ShopStaffView extends StatelessWidget {
               ),
               if (canManageStaff)
                 StreamBuilder<List<StaffInvitation>>(
-                  stream: staffRepository.watchInvitations(shopId),
+                  stream: resilientQuery(() => staffRepository.watchInvitations(shopId)),
                   builder: (context, inviteSnapshot) {
                     final invitations = inviteSnapshot.data ?? const <StaffInvitation>[];
                     if (invitations.isEmpty) return const SizedBox.shrink();
