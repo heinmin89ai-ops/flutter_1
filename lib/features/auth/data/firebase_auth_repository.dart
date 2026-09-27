@@ -159,10 +159,16 @@ class FirebaseAuthRepository implements AuthRepository {
       final document = await _firestore.collection('users').doc(user.uid).get();
       profile = document.data() ?? const {};
     } on FirebaseException {
-      // Offline sign-in still needs a role to render the shell. Firestore
-      // rules stay document-based, so a stale token only affects this UI.
+      // Firestore is unreachable; the claims below still render the shell.
+    }
+
+    if (UserRoleLabel.fromClaim(profile['role']) == null) {
+      // An empty read means the profile is not in the local cache yet rather
+      // than genuinely absent, so fall back to the claims written when the
+      // account was created. Without this the owner silently loses staff
+      // management until the next auth event.
       final token = await user.getIdTokenResult();
-      profile = token.claims ?? const {};
+      profile = {...?token.claims, ...profile};
     }
 
     final rawPermissions = profile['permissions'];
