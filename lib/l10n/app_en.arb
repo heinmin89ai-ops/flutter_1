@@ -1,0 +1,323 @@
+{
+  "@@locale": "en",
+
+  "appName": "Workshop Ops",
+
+  "navDashboard": "Dashboard",
+  "navVehicles": "Vehicles",
+  "navJobCards": "Job cards",
+  "navInventory": "Inventory",
+  "navBilling": "Billing",
+  "navWarranty": "Warranty",
+  "navShopsStaff": "Shops & staff",
+  "navReports": "Reports",
+  "accountMenu": "Account menu",
+  "unknownRole": "Unknown role",
+  "signOut": "Sign out",
+
+  "signInSubtitle": "Sign in with your staff account.",
+  "emailLabel": "Email",
+  "passwordLabel": "Password",
+  "signIn": "Sign in",
+  "showPassword": "Show password",
+  "hidePassword": "Hide password",
+  "validationValidEmail": "Enter a valid email.",
+  "validationPasswordLength": "Password must be at least 6 characters.",
+  "signInFailed": "Unable to sign in. Please try again.",
+  "accessNotConfiguredTitle": "Access not configured",
+  "accessNotConfiguredBody": "Your account does not have an active workshop role. Contact an administrator.",
+
+  "workshopOverview": "Workshop overview",
+  "workshopOverviewSubtitle": "A clear view of today's work, even when the network is unavailable.",
+  "metricOpenJobCards": "Open job cards",
+  "metricOpenJobCardsDetail": "No records loaded yet",
+  "metricVehiclesToday": "Vehicles today",
+  "metricVehiclesTodayDetail": "Ready for local search",
+  "metricInProgress": "In progress",
+  "metricInProgressDetail": "Assigned mechanic work",
+  "metricPendingBalance": "Pending balance",
+  "metricPendingBalanceDetail": "Currency will come from shop settings",
+  "todaySectionTitle": "Today",
+  "todayPlateSearchTitle": "License plate search",
+  "todayPlateSearchSubtitle": "Local indexed search will be available in the Customers and Vehicles phase.",
+  "todaySyncQueueTitle": "Sync queue",
+  "todaySyncQueueSubtitle": "Every offline mutation will remain visible until cloud synchronization completes.",
+
+  "syncStatusOnline": "Online",
+  "syncStatusOffline": "Offline",
+  "syncStatusSyncing": "Syncing",
+  "syncStatusPending": "Pending changes",
+  "syncStatusFailed": "Sync failed",
+  "syncDescOnline": "All local changes are synchronized.",
+  "syncDescOffline": "Changes will be queued on this device.",
+  "syncDescSyncing": "Uploading local changes securely.",
+  "syncDescPending": "Local work is saved and waiting to sync.",
+  "syncDescFailed": "Some changes need attention before retrying.",
+
+  "languageMenuLabel": "Change language",
+  "roleSuperAdmin": "Super Admin",
+  "roleShopOwner": "Shop Owner",
+  "roleManager": "Manager",
+  "roleFrontDesk": "Front Desk",
+  "roleMechanic": "Mechanic",
+
+  "cancel": "Cancel",
+  "create": "Create",
+  "statusActive": "Active",
+  "statusInactive": "Inactive",
+  "quantityLabel": "Quantity",
+  "customerIdLabel": "Customer ID",
+  "vehicleIdLabel": "Vehicle ID",
+  "noWorkshopAssigned": "No workshop is assigned to this account.",
+  "validationRequired": "Required",
+  "validationEnterName": "Enter a name.",
+
+  "vehiclesPageTitle": "Vehicles & customers",
+  "vehiclesPageSubtitle": "Search license plates locally, even when the workshop is offline.",
+  "vehiclesRegisterVehicle": "Register vehicle",
+  "vehiclesSearchLabel": "Search license plate",
+  "vehiclesSearchHint": "e.g. ABC-123",
+  "vehiclesClearSearch": "Clear search",
+  "vehiclesLoadError": "Unable to load local vehicle records.",
+  "vehiclesSearchUnavailable": "Local search is unavailable.",
+  "vehiclesEmpty": "No vehicles found.",
+  "vehiclesDialogTitle": "Register customer and vehicle",
+  "vehiclesCustomerTypeLabel": "Customer type",
+  "vehiclesCustomerNameLabel": "Customer name",
+  "vehiclesPhoneLabel": "Phone",
+  "vehiclesPlateLabel": "License plate",
+  "vehiclesMakeLabel": "Make",
+  "vehiclesModelLabel": "Model",
+  "vehiclesValidationCustomerName": "Enter a customer name.",
+  "vehiclesValidationPlate": "Enter a license plate.",
+  "vehiclesSaveError": "Unable to save customer and vehicle.",
+  "vehiclesRegisterSubmit": "Register",
+  "customerTypeIndividual": "Individual",
+  "customerTypeCompany": "Company",
+
+  "reportsPageSubtitle": "Operational and financial summary for the last 30 days.",
+  "reportsMetricCompletedJobs": "Completed jobs",
+  "reportsMetricInvoices": "Invoices",
+  "reportsMetricRevenue": "Revenue",
+  "reportsMetricPaid": "Paid",
+  "reportsMetricOutstanding": "Outstanding",
+  "reportsMetricLowStock": "Low stock",
+
+  "warrantyCreate": "Create warranty",
+  "warrantyLoadError": "Unable to load warranties.",
+  "warrantyEmpty": "No warranty records found.",
+  "warrantyRecordCount": "{count} warranty records",
+  "@warrantyRecordCount": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "warrantyDefaultTerms": "Covers workmanship and replaced parts under workshop warranty terms.",
+  "warrantyCompletedJobIdLabel": "Completed job card ID",
+  "warrantyDurationLabel": "Duration",
+  "warrantyDurationMonths": "{count} months",
+  "@warrantyDurationMonths": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "warrantyTermsLabel": "Terms",
+  "warrantyTileJobTitle": "Job {jobId}",
+  "@warrantyTileJobTitle": {
+    "placeholders": {
+      "jobId": {}
+    }
+  },
+  "warrantyTileSubtitle": "Vehicle {vehicleId} · {months} months · expires {date}",
+  "@warrantyTileSubtitle": {
+    "placeholders": {
+      "vehicleId": {},
+      "months": {},
+      "date": {}
+    }
+  },
+  "warrantyStatusExpired": "Expired",
+  "warrantyStatusVoided": "Voided",
+
+  "inventoryLoadError": "Unable to load inventory.",
+  "inventoryEmpty": "No inventory items found.",
+  "inventoryAddItem": "Add item",
+  "inventorySubtitle": "{count} items · quantity changes are recorded as movements",
+  "@inventorySubtitle": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "inventoryCreateTitle": "Add inventory item",
+  "inventoryNameLabel": "Name",
+  "inventorySkuLabel": "SKU",
+  "inventoryMinimumStockLabel": "Minimum stock",
+  "inventorySellingPriceLabel": "Selling price (minor units)",
+  "inventoryCreateError": "Unable to create inventory item.",
+  "inventoryMovementTitle": "Stock movement · {name}",
+  "@inventoryMovementTitle": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "inventoryValidationPositiveQuantity": "Enter a positive quantity.",
+  "inventoryReasonLabel": "Reason",
+  "inventoryRecord": "Record",
+  "inventoryRecordMovementTooltip": "Record stock movement",
+  "inventoryLowStock": "Low stock",
+  "inventoryInStock": "In stock",
+  "inventoryMovementTypeStockIn": "Stock in",
+  "inventoryMovementTypeStockOut": "Stock out",
+  "inventoryMovementTypeAdjustment": "Adjustment",
+  "inventoryMovementTypeReturn": "Return",
+
+  "billingPageTitle": "Billing & payments",
+  "billingLoadError": "Unable to load invoices.",
+  "billingEmpty": "No invoices found.",
+  "billingSubtitle": "{count} invoices · all amounts use minor units",
+  "@billingSubtitle": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "billingNewInvoice": "New invoice",
+  "billingCreateTitle": "Create invoice",
+  "billingJobCardIdLabel": "Job card ID",
+  "billingItemTypeLabel": "Item type",
+  "billingDescriptionLabel": "Description",
+  "billingUnitPriceLabel": "Unit price (minor units)",
+  "billingTaxLabel": "Tax (minor units)",
+  "billingReceivePaymentTitle": "Receive payment · {invoiceNumber}",
+  "@billingReceivePaymentTitle": {
+    "placeholders": {
+      "invoiceNumber": {}
+    }
+  },
+  "billingBalanceLabel": "Balance: {amount} minor units",
+  "@billingBalanceLabel": {
+    "placeholders": {
+      "amount": {}
+    }
+  },
+  "billingAmountLabel": "Amount (minor units)",
+  "billingMethodLabel": "Payment method",
+  "billingReferenceLabel": "Reference",
+  "billingReceive": "Receive",
+  "billingReceivePaymentTooltip": "Receive payment",
+  "billingInvoiceTotals": "{count} items · Total {total} · Balance {balance}",
+  "@billingInvoiceTotals": {
+    "placeholders": {
+      "count": {},
+      "total": {},
+      "balance": {}
+    }
+  },
+  "billingValidationPositiveInteger": "Enter a positive integer.",
+  "billingItemTypeLabor": "Labor",
+  "billingItemTypePart": "Part",
+  "billingItemTypeService": "Service",
+  "billingItemTypeDirectSale": "Direct sale",
+  "billingPaymentMethodCash": "Cash",
+  "billingPaymentMethodCard": "Card",
+  "billingPaymentMethodBankTransfer": "Bank transfer",
+  "billingPaymentMethodMobilePayment": "Mobile payment",
+  "billingPaymentMethodOther": "Other",
+  "billingInvoiceStatusDraft": "Draft",
+  "billingInvoiceStatusIssued": "Issued",
+  "billingInvoiceStatusPartiallyPaid": "Partially paid",
+  "billingInvoiceStatusPaid": "Paid",
+  "billingInvoiceStatusVoided": "Voided",
+
+  "shopsPlatformTitle": "Workshops",
+  "shopsPlatformSubtitle": "Platform-level workshop onboarding",
+  "shopsLoadWorkshopsError": "Unable to load workshops.",
+  "shopsWorkshopsEmpty": "No workshops have been onboarded.",
+  "shopsCreateWorkshop": "Create workshop",
+  "shopsWorkshopNameLabel": "Workshop name",
+  "shopsWorkshopCodeLabel": "Workshop code",
+  "shopsValidationCodeLength": "Use at least 3 characters.",
+  "shopsLoadSettingsError": "Unable to load workshop settings.",
+  "shopsNotFound": "Workshop not found.",
+  "shopsAddStaff": "Add staff",
+  "shopsLoadStaffError": "Unable to load staff.",
+  "shopsStaffEmpty": "No staff accounts found.",
+  "shopsCreateStaffTitle": "Add staff account",
+  "shopsFullNameLabel": "Full name",
+  "shopsRoleLabel": "Role",
+
+  "jobCardsLoadError": "Unable to load job cards.",
+  "jobCardsEmpty": "No job cards found.",
+  "jobCardsFallbackRole": "Staff",
+  "jobCardsSubtitle": "{count} visible job cards · {role}",
+  "@jobCardsSubtitle": {
+    "placeholders": {
+      "count": {},
+      "role": {}
+    }
+  },
+  "jobCardsNew": "New job card",
+  "jobCardsCreateTitle": "Create job card",
+  "jobCardsComplaintLabel": "Customer complaint",
+  "jobCardsPriorityLabel": "Priority",
+  "jobCardsPriorityLow": "Low",
+  "jobCardsPriorityNormal": "Normal",
+  "jobCardsPriorityHigh": "High",
+  "jobCardsPriorityUrgent": "Urgent",
+  "jobCardsTilePriorityVehicle": "Priority: {priority} · Vehicle: {vehicleId}",
+  "@jobCardsTilePriorityVehicle": {
+    "placeholders": {
+      "priority": {},
+      "vehicleId": {}
+    }
+  },
+  "jobCardsAssignedMechanics": "Assigned mechanics: {count}",
+  "@jobCardsAssignedMechanics": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "jobCardsAssignMechanic": "Assign mechanic",
+  "jobCardsMechanicIdLabel": "Mechanic user ID",
+  "jobCardsAssign": "Assign",
+  "jobCardStatusDraft": "Draft",
+  "jobCardStatusOpen": "Open",
+  "jobCardStatusAssigned": "Assigned",
+  "jobCardStatusInProgress": "In progress",
+  "jobCardStatusWaitingForParts": "Waiting for parts",
+  "jobCardStatusWaitingForApproval": "Waiting for approval",
+  "jobCardStatusCompleted": "Completed",
+  "jobCardStatusReadyForPickup": "Ready for pickup",
+  "jobCardStatusClosed": "Closed",
+  "jobCardStatusCancelled": "Cancelled",
+
+  "authInvalidCredentials": "Email or password is incorrect.",
+  "authTooManyRequests": "Too many attempts. Please wait and try again.",
+  "authUserDisabled": "This staff account is disabled.",
+  "authConnectionRetry": "Unable to sign in. Check your connection and try again.",
+  "authNoUserReturned": "Authentication returned no user.",
+  "authAccountInactive": "This staff account is inactive.",
+  "authNoValidRole": "Your account has no valid role.",
+
+  "errShopPermission": "You are not authorized to create a workshop.",
+  "errShopCodeExists": "This workshop code is already in use.",
+  "errShopFieldsRequired": "Workshop name and code are required.",
+  "errShopUnavailable": "Workshop management is temporarily unavailable.",
+  "errWarrantyPermission": "You are not authorized to create warranties.",
+  "errWarrantyUnavailable": "Warranty operation is temporarily unavailable.",
+  "errJobCardPermission": "You are not authorized to perform this job-card action.",
+  "errJobCardStale": "This job card changed. Refresh and try again.",
+  "errJobCardNotFound": "Job card was not found in this workshop.",
+  "errJobCardUnavailable": "Job card operation is temporarily unavailable.",
+  "errStaffPermission": "You are not authorized to manage this workshop staff.",
+  "errStaffEmailExists": "A staff account with this email already exists.",
+  "errStaffInvalid": "The staff details are invalid.",
+  "errStaffUnavailable": "Staff management is temporarily unavailable.",
+  "errInventoryPermission": "You are not authorized to manage inventory.",
+  "errInventoryNegativeStock": "The stock movement would make inventory negative.",
+  "errInventoryUnavailable": "Inventory operation is temporarily unavailable.",
+  "errReportPermission": "You are not authorized to view reports.",
+  "errReportUnavailable": "Report generation is temporarily unavailable.",
+  "errBillingPaymentExceeds": "Payment exceeds the invoice balance or invoice is not payable.",
+  "errBillingPermission": "You are not authorized for this billing action.",
+  "errBillingUnavailable": "Billing operation is temporarily unavailable."
+}

@@ -14,48 +14,48 @@ class SqliteCustomerVehicleStore {
   Future<void> initialize() async {
     if (_database != null) return;
     final databasePath = path.join(await getDatabasesPath(), 'workshop_ops.db');
-    _database = await openDatabase(
-      databasePath,
-      version: 1,
-      onCreate: (database, version) async {
-        await database.execute('''
-          CREATE TABLE customers (
-            customerId TEXT PRIMARY KEY,
-            shopId TEXT NOT NULL,
-            type TEXT NOT NULL,
-            name TEXT NOT NULL,
-            phone TEXT,
-            email TEXT,
-            address TEXT,
-            companyName TEXT,
-            taxId TEXT,
-            notes TEXT,
-            isActive INTEGER NOT NULL
-          )
-        ''');
-        await database.execute('''
-          CREATE TABLE vehicles (
-            vehicleId TEXT PRIMARY KEY,
-            shopId TEXT NOT NULL,
-            customerId TEXT NOT NULL,
-            licensePlate TEXT NOT NULL,
-            normalizedLicensePlate TEXT NOT NULL,
-            vin TEXT,
-            make TEXT,
-            model TEXT,
-            year INTEGER,
-            color TEXT,
-            mileage INTEGER,
-            fuelType TEXT,
-            transmission TEXT,
-            notes TEXT
-          )
-        ''');
-        await database.execute('CREATE INDEX idx_vehicles_plate ON vehicles(normalizedLicensePlate)');
-        await database.execute('CREATE INDEX idx_vehicles_shop_updated ON vehicles(shopId)');
-        await database.execute('CREATE INDEX idx_customers_shop ON customers(shopId)');
-      },
-    );
+    // SqliteSyncQueue opens this same file first and sqflite hands back the
+    // existing connection, so neither onCreate nor onOpen runs a second time.
+    final database = await openDatabase(databasePath, version: 1);
+    await database.transaction((txn) async {
+      await txn.execute('''
+        CREATE TABLE IF NOT EXISTS customers (
+          customerId TEXT PRIMARY KEY,
+          shopId TEXT NOT NULL,
+          type TEXT NOT NULL,
+          name TEXT NOT NULL,
+          phone TEXT,
+          email TEXT,
+          address TEXT,
+          companyName TEXT,
+          taxId TEXT,
+          notes TEXT,
+          isActive INTEGER NOT NULL
+        )
+      ''');
+      await txn.execute('''
+        CREATE TABLE IF NOT EXISTS vehicles (
+          vehicleId TEXT PRIMARY KEY,
+          shopId TEXT NOT NULL,
+          customerId TEXT NOT NULL,
+          licensePlate TEXT NOT NULL,
+          normalizedLicensePlate TEXT NOT NULL,
+          vin TEXT,
+          make TEXT,
+          model TEXT,
+          year INTEGER,
+          color TEXT,
+          mileage INTEGER,
+          fuelType TEXT,
+          transmission TEXT,
+          notes TEXT
+        )
+      ''');
+      await txn.execute('CREATE INDEX IF NOT EXISTS idx_vehicles_plate ON vehicles(normalizedLicensePlate)');
+      await txn.execute('CREATE INDEX IF NOT EXISTS idx_vehicles_shop_updated ON vehicles(shopId)');
+      await txn.execute('CREATE INDEX IF NOT EXISTS idx_customers_shop ON customers(shopId)');
+    });
+    _database = database;
   }
 
   Stream<List<Vehicle>> watchVehicles(String shopId) async* {

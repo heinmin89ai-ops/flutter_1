@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../../app/localization/enum_l10n.dart';
+import '../../../app/widgets/page_header.dart';
+import '../../../core/errors/localized_failure.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../auth/domain/auth_user.dart';
 import '../data/firebase_shop_repository.dart';
 import '../data/firebase_staff_repository.dart';
@@ -22,12 +26,13 @@ class ShopsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     if (user.role == UserRole.superAdmin && user.shopId == null) {
       return _PlatformShopsView(repository: shopRepository);
     }
     final shopId = user.shopId;
     if (shopId == null) {
-      return const Center(child: Text('No workshop is assigned to this account.'));
+      return Center(child: Text(l10n.noWorkshopAssigned));
     }
     return _ShopStaffView(
       shopId: shopId,
@@ -45,22 +50,23 @@ class _PlatformShopsView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return StreamBuilder<List<Shop>>(
       stream: repository.watchAllShops(),
       builder: (context, snapshot) {
-        if (snapshot.hasError) return _ErrorState(message: 'Unable to load workshops.');
+        if (snapshot.hasError) return _ErrorState(message: l10n.shopsLoadWorkshopsError);
         if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
         final shops = snapshot.data!;
         return _PageFrame(
-          title: 'Workshops',
-          subtitle: 'Platform-level workshop onboarding',
+          title: l10n.shopsPlatformTitle,
+          subtitle: l10n.shopsPlatformSubtitle,
           action: FilledButton.icon(
             onPressed: () => _showCreateShopDialog(context),
             icon: const Icon(Icons.add_business_outlined),
-            label: const Text('Create workshop'),
+            label: Text(l10n.shopsCreateWorkshop),
           ),
           child: shops.isEmpty
-              ? const _EmptyState(message: 'No workshops have been onboarded.')
+              ? _EmptyState(message: l10n.shopsWorkshopsEmpty)
               : ListView.separated(
                   shrinkWrap: true,
                   itemCount: shops.length,
@@ -73,13 +79,14 @@ class _PlatformShopsView extends StatelessWidget {
   }
 
   Future<void> _showCreateShopDialog(BuildContext context) async {
+    final l10n = AppLocalizations.of(context);
     final nameController = TextEditingController();
     final codeController = TextEditingController();
     final formKey = GlobalKey<FormState>();
     await showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Create workshop'),
+        title: Text(l10n.shopsCreateWorkshop),
         content: Form(
           key: formKey,
           child: Column(
@@ -87,20 +94,20 @@ class _PlatformShopsView extends StatelessWidget {
             children: [
               TextFormField(
                 controller: nameController,
-                decoration: const InputDecoration(labelText: 'Workshop name'),
-                validator: (value) => value == null || value.trim().isEmpty ? 'Enter a name.' : null,
+                decoration: InputDecoration(labelText: l10n.shopsWorkshopNameLabel),
+                validator: (value) => value == null || value.trim().isEmpty ? l10n.validationEnterName : null,
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: codeController,
-                decoration: const InputDecoration(labelText: 'Workshop code'),
-                validator: (value) => value == null || value.trim().length < 3 ? 'Use at least 3 characters.' : null,
+                decoration: InputDecoration(labelText: l10n.shopsWorkshopCodeLabel),
+                validator: (value) => value == null || value.trim().length < 3 ? l10n.shopsValidationCodeLength : null,
               ),
             ],
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(dialogContext), child: Text(l10n.cancel)),
           FilledButton(
             onPressed: () async {
               if (!formKey.currentState!.validate()) return;
@@ -108,10 +115,10 @@ class _PlatformShopsView extends StatelessWidget {
                 await repository.createShop(name: nameController.text, code: codeController.text);
                 if (dialogContext.mounted) Navigator.pop(dialogContext);
               } on ShopManagementFailure catch (error) {
-                if (dialogContext.mounted) _showMessage(dialogContext, error.message);
+                if (dialogContext.mounted) _showMessage(dialogContext, localizedFailureMessage(AppLocalizations.of(dialogContext), error));
               }
             },
-            child: const Text('Create'),
+            child: Text(l10n.create),
           ),
         ],
       ),
@@ -136,13 +143,14 @@ class _ShopStaffView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return StreamBuilder<Shop?>(
       stream: shopRepository.watchShop(shopId),
       builder: (context, shopSnapshot) {
-        if (shopSnapshot.hasError) return _ErrorState(message: 'Unable to load workshop settings.');
+        if (shopSnapshot.hasError) return _ErrorState(message: l10n.shopsLoadSettingsError);
         if (!shopSnapshot.hasData) return const Center(child: CircularProgressIndicator());
         final shop = shopSnapshot.data;
-        if (shop == null) return const _ErrorState(message: 'Workshop not found.');
+        if (shop == null) return _ErrorState(message: l10n.shopsNotFound);
         return _PageFrame(
           title: shop.name,
           subtitle: '${shop.code} · ${shop.currency} · ${shop.timezone}',
@@ -150,16 +158,16 @@ class _ShopStaffView extends StatelessWidget {
               ? FilledButton.icon(
                   onPressed: () => _showCreateStaffDialog(context),
                   icon: const Icon(Icons.person_add_outlined),
-                  label: const Text('Add staff'),
+                  label: Text(l10n.shopsAddStaff),
                 )
               : null,
           child: StreamBuilder<List<StaffMember>>(
             stream: staffRepository.watchStaff(shopId),
             builder: (context, staffSnapshot) {
-              if (staffSnapshot.hasError) return const _ErrorState(message: 'Unable to load staff.');
+              if (staffSnapshot.hasError) return _ErrorState(message: l10n.shopsLoadStaffError);
               if (!staffSnapshot.hasData) return const Center(child: CircularProgressIndicator());
               final staff = staffSnapshot.data!;
-              if (staff.isEmpty) return const _EmptyState(message: 'No staff accounts found.');
+              if (staff.isEmpty) return _EmptyState(message: l10n.shopsStaffEmpty);
               return ListView.separated(
                 shrinkWrap: true,
                 itemCount: staff.length,
@@ -183,6 +191,7 @@ class _ShopStaffView extends StatelessWidget {
   }
 
   Future<void> _showCreateStaffDialog(BuildContext context) async {
+    final l10n = AppLocalizations.of(context);
     final emailController = TextEditingController();
     final nameController = TextEditingController();
     var role = UserRole.frontDesk;
@@ -191,7 +200,7 @@ class _ShopStaffView extends StatelessWidget {
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Add staff account'),
+          title: Text(l10n.shopsCreateStaffTitle),
           content: Form(
             key: formKey,
             child: Column(
@@ -199,22 +208,22 @@ class _ShopStaffView extends StatelessWidget {
               children: [
                 TextFormField(
                   controller: nameController,
-                  decoration: const InputDecoration(labelText: 'Full name'),
-                  validator: (value) => value == null || value.trim().isEmpty ? 'Enter a name.' : null,
+                  decoration: InputDecoration(labelText: l10n.shopsFullNameLabel),
+                  validator: (value) => value == null || value.trim().isEmpty ? l10n.validationEnterName : null,
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: emailController,
                   keyboardType: TextInputType.emailAddress,
-                  decoration: const InputDecoration(labelText: 'Email'),
-                  validator: (value) => value == null || !value.contains('@') ? 'Enter a valid email.' : null,
+                  decoration: InputDecoration(labelText: l10n.emailLabel),
+                  validator: (value) => value == null || !value.contains('@') ? l10n.validationValidEmail : null,
                 ),
                 const SizedBox(height: 12),
-                DropdownButtonFormField<UserRole>(
+                DropdownButtonFormField<UserRole>(isExpanded: true,
                   value: role,
-                  decoration: const InputDecoration(labelText: 'Role'),
+                  decoration: InputDecoration(labelText: l10n.shopsRoleLabel),
                   items: UserRole.values.where((item) => item != UserRole.superAdmin && item != UserRole.shopOwner).map((item) {
-                    return DropdownMenuItem(value: item, child: Text(item.label));
+                    return DropdownMenuItem(value: item, child: Text(item.localizedLabel(l10n)));
                   }).toList(),
                   onChanged: (value) => setDialogState(() => role = value ?? UserRole.frontDesk),
                 ),
@@ -222,7 +231,7 @@ class _ShopStaffView extends StatelessWidget {
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+            TextButton(onPressed: () => Navigator.pop(dialogContext), child: Text(l10n.cancel)),
             FilledButton(
               onPressed: () async {
                 if (!formKey.currentState!.validate()) return;
@@ -235,10 +244,10 @@ class _ShopStaffView extends StatelessWidget {
                   );
                   if (dialogContext.mounted) Navigator.pop(dialogContext);
                 } on StaffManagementFailure catch (error) {
-                  if (dialogContext.mounted) _showMessage(dialogContext, error.message);
+                  if (dialogContext.mounted) _showMessage(dialogContext, localizedFailureMessage(AppLocalizations.of(dialogContext), error));
                 }
               },
-              child: const Text('Create'),
+              child: Text(l10n.create),
             ),
           ],
         ),
@@ -258,17 +267,18 @@ class _StaffTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Card(
       child: ListTile(
         leading: CircleAvatar(child: Text(member.name.isEmpty ? '?' : member.name[0].toUpperCase())),
         title: Text(member.name.isEmpty ? member.email : member.name),
-        subtitle: Text('${member.email} · ${member.role.label}'),
+        subtitle: Text('${member.email} · ${member.role.localizedLabel(l10n)}'),
         trailing: canManage
             ? Switch(
                 value: member.isActive,
                 onChanged: (value) => onChanged(member.role, value),
               )
-            : Chip(label: Text(member.isActive ? 'Active' : 'Inactive')),
+            : Chip(label: Text(member.isActive ? l10n.statusActive : l10n.statusInactive)),
       ),
     );
   }
@@ -281,12 +291,13 @@ class _ShopTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Card(
       child: ListTile(
         leading: const CircleAvatar(child: Icon(Icons.storefront_outlined)),
         title: Text(shop.name),
         subtitle: Text('${shop.code} · ${shop.timezone}'),
-        trailing: Chip(label: Text(shop.isActive ? 'Active' : 'Inactive')),
+        trailing: Chip(label: Text(shop.isActive ? l10n.statusActive : l10n.statusInactive)),
       ),
     );
   }
@@ -305,22 +316,7 @@ class _PageFrame extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: Theme.of(context).textTheme.headlineMedium),
-                  const SizedBox(height: 4),
-                  Text(subtitle),
-                ],
-              ),
-            ),
-            if (action != null) action!,
-          ],
-        ),
+        PageHeader(title: title, subtitle: subtitle, action: action),
         const SizedBox(height: 24),
         child,
       ],

@@ -13,6 +13,7 @@ import '../../warranty/domain/warranty_repository.dart';
 import '../../billing/domain/billing_repository.dart';
 import '../../../core/sync/sync_engine.dart';
 import '../../reports/domain/report_repository.dart';
+import '../../../l10n/app_localizations.dart';
 
 class AuthGate extends StatelessWidget {
   const AuthGate({
@@ -89,6 +90,7 @@ class _AccessDeniedPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       body: Center(
         child: ConstrainedBox(
@@ -100,14 +102,14 @@ class _AccessDeniedPage extends StatelessWidget {
               children: [
                 const Icon(Icons.gpp_bad_outlined, size: 56),
                 const SizedBox(height: 16),
-                Text('Access not configured', style: Theme.of(context).textTheme.headlineSmall),
+                Text(l10n.accessNotConfiguredTitle, style: Theme.of(context).textTheme.headlineSmall),
                 const SizedBox(height: 8),
-                const Text('Your account does not have an active workshop role. Contact an administrator.'),
+                Text(l10n.accessNotConfiguredBody),
                 const SizedBox(height: 20),
                 FilledButton.icon(
                   onPressed: onSignOut,
                   icon: const Icon(Icons.logout),
-                  label: const Text('Sign out'),
+                  label: Text(l10n.signOut),
                 ),
               ],
             ),

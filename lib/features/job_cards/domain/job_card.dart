@@ -33,11 +33,6 @@ class JobCardStatus {
     return values.firstWhere((status) => status.value == value, orElse: () => draft);
   }
 
-  String get label => value
-      .split('_')
-      .map((word) => word[0] + word.substring(1).toLowerCase())
-      .join(' ');
-
   bool canTransitionTo(JobCardStatus target, UserRole role) {
     if (target == cancelled) return role != UserRole.mechanic && this != closed;
     if (this == draft && target == open) return role != UserRole.mechanic;

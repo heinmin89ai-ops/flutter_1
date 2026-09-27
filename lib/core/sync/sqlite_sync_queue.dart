@@ -15,8 +15,11 @@ class SqliteSyncQueue {
   Future<void> initialize() async {
     if (_database != null) return;
     final databasePath = path.join(await getDatabasesPath(), 'workshop_ops.db');
-    _database = await openDatabase(databasePath, version: 1, onOpen: (database) async {
-      await database.execute('''
+    // Shared with SqliteCustomerVehicleStore, and sqflite only runs open
+    // callbacks for whichever side opens the file first, so create here.
+    final database = await openDatabase(databasePath, version: 1);
+    await database.transaction((txn) async {
+      await txn.execute('''
         CREATE TABLE IF NOT EXISTS sync_queue (
           id TEXT PRIMARY KEY,
           shopId TEXT NOT NULL,
@@ -31,9 +34,10 @@ class SqliteSyncQueue {
           errorMessage TEXT
         )
       ''');
-      await database.execute('CREATE INDEX IF NOT EXISTS idx_sync_queue_status ON sync_queue(status, createdAt)');
-      await database.execute('CREATE UNIQUE INDEX IF NOT EXISTS idx_sync_queue_idempotency ON sync_queue(entityType, entityId, operation) WHERE status != \'COMPLETED\'');
+      await txn.execute('CREATE INDEX IF NOT EXISTS idx_sync_queue_status ON sync_queue(status, createdAt)');
+      await txn.execute('CREATE UNIQUE INDEX IF NOT EXISTS idx_sync_queue_idempotency ON sync_queue(entityType, entityId, operation) WHERE status != \'COMPLETED\'');
     });
+    _database = database;
   }
 
   Future<void> enqueue({required String shopId, required String entityType, required String entityId, required SyncOperation operation, required Map<String, Object?> payload}) async {

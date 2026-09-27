@@ -156,6 +156,8 @@ void main() {
 
     expect(find.text('Workshop overview'), findsOneWidget);
     expect(find.text('Open job cards'), findsOneWidget);
-    expect(find.text('Pending changes'), findsOneWidget);
+    // The app bar status button and the dashboard banner both show the label.
+    expect(find.text('Pending changes'), findsNWidgets(2));
+    expect(find.text('Local work is saved and waiting to sync.'), findsOneWidget);
   });
 }

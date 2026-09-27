@@ -1,8 +1,6 @@
 enum CustomerType { individual, company }
 
 extension CustomerTypeLabel on CustomerType {
-  String get label => this == CustomerType.individual ? 'Individual' : 'Company';
-
   static CustomerType fromValue(Object? value) {
     return value == 'COMPANY' ? CustomerType.company : CustomerType.individual;
   }

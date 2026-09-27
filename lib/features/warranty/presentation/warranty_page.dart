@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../../app/localization/enum_l10n.dart';
+import '../../../app/widgets/page_header.dart';
+import '../../../core/errors/localized_failure.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../auth/domain/auth_user.dart';
 import '../data/firebase_warranty_repository.dart';
 import '../domain/warranty.dart';
@@ -13,19 +17,26 @@ class WarrantyPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final shopId = user.shopId;
-    if (shopId == null) return const Center(child: Text('No workshop is assigned to this account.'));
+    if (shopId == null) return Center(child: Text(l10n.noWorkshopAssigned));
     return StreamBuilder<List<Warranty>>(
       stream: repository.watchWarranties(shopId),
       builder: (context, snapshot) {
-        if (snapshot.hasError) return const Center(child: Text('Unable to load warranties.'));
+        if (snapshot.hasError) return Center(child: Text(l10n.warrantyLoadError));
         if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
         final warranties = snapshot.data!;
         final canCreate = user.role == UserRole.shopOwner || user.role == UserRole.manager;
         return ListView(padding: const EdgeInsets.all(24), children: [
-          Row(children: [Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Warranty', style: Theme.of(context).textTheme.headlineMedium), const SizedBox(height: 4), Text('${warranties.length} warranty records')])), if (canCreate) FilledButton.icon(onPressed: () => _createWarranty(context, shopId), icon: const Icon(Icons.add), label: const Text('Create warranty'))]),
+          PageHeader(
+            title: l10n.navWarranty,
+            subtitle: l10n.warrantyRecordCount(warranties.length),
+            action: canCreate
+                ? FilledButton.icon(onPressed: () => _createWarranty(context, shopId), icon: const Icon(Icons.add), label: Text(l10n.warrantyCreate))
+                : null,
+          ),
           const SizedBox(height: 24),
-          if (warranties.isEmpty) const Card(child: Padding(padding: EdgeInsets.all(32), child: Center(child: Text('No warranty records found.'))))
+          if (warranties.isEmpty) Card(child: Padding(padding: const EdgeInsets.all(32), child: Center(child: Text(l10n.warrantyEmpty))))
           else ...warranties.map((warranty) => _WarrantyTile(warranty: warranty)),
         ]);
       },
@@ -33,37 +44,38 @@ class WarrantyPage extends StatelessWidget {
   }
 
   Future<void> _createWarranty(BuildContext context, String shopId) async {
+    final l10n = AppLocalizations.of(context);
     final job = TextEditingController();
     final vehicle = TextEditingController();
     final customer = TextEditingController();
-    final terms = TextEditingController(text: 'Covers workmanship and replaced parts under workshop warranty terms.');
+    final terms = TextEditingController(text: l10n.warrantyDefaultTerms);
     var duration = 6;
     final formKey = GlobalKey<FormState>();
     try {
       await showDialog<void>(
         context: context,
         builder: (dialogContext) => StatefulBuilder(builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Create warranty'),
+          title: Text(l10n.warrantyCreate),
           content: Form(key: formKey, child: Column(mainAxisSize: MainAxisSize.min, children: [
-            TextFormField(controller: job, decoration: const InputDecoration(labelText: 'Completed job card ID'), validator: _required),
+            TextFormField(controller: job, decoration: InputDecoration(labelText: l10n.warrantyCompletedJobIdLabel), validator: (value) => _required(l10n, value)),
             const SizedBox(height: 12),
-            TextFormField(controller: vehicle, decoration: const InputDecoration(labelText: 'Vehicle ID'), validator: _required),
+            TextFormField(controller: vehicle, decoration: InputDecoration(labelText: l10n.vehicleIdLabel), validator: (value) => _required(l10n, value)),
             const SizedBox(height: 12),
-            TextFormField(controller: customer, decoration: const InputDecoration(labelText: 'Customer ID'), validator: _required),
+            TextFormField(controller: customer, decoration: InputDecoration(labelText: l10n.customerIdLabel), validator: (value) => _required(l10n, value)),
             const SizedBox(height: 12),
-            DropdownButtonFormField<int>(value: duration, decoration: const InputDecoration(labelText: 'Duration'), items: const [1, 3, 6, 12].map((value) => DropdownMenuItem(value: value, child: Text('$value months'))).toList(), onChanged: (value) => setDialogState(() => duration = value ?? 6)),
+            DropdownButtonFormField<int>(isExpanded: true,value: duration, decoration: InputDecoration(labelText: l10n.warrantyDurationLabel), items: const [1, 3, 6, 12].map((value) => DropdownMenuItem(value: value, child: Text(l10n.warrantyDurationMonths(value)))).toList(), onChanged: (value) => setDialogState(() => duration = value ?? 6)),
             const SizedBox(height: 12),
-            TextFormField(controller: terms, maxLines: 3, decoration: const InputDecoration(labelText: 'Terms'), validator: _required),
+            TextFormField(controller: terms, maxLines: 3, decoration: InputDecoration(labelText: l10n.warrantyTermsLabel), validator: (value) => _required(l10n, value)),
           ])),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+            TextButton(onPressed: () => Navigator.pop(dialogContext), child: Text(l10n.cancel)),
             FilledButton(onPressed: () async {
               if (!formKey.currentState!.validate()) return;
               try {
                 await repository.createWarranty(shopId: shopId, jobCardId: job.text.trim(), vehicleId: vehicle.text.trim(), customerId: customer.text.trim(), durationMonths: duration, terms: terms.text.trim());
                 if (dialogContext.mounted) Navigator.pop(dialogContext);
-              } on WarrantyFailure catch (error) { if (dialogContext.mounted) _message(dialogContext, error.message); }
-            }, child: const Text('Create')),
+              } on WarrantyFailure catch (error) { if (dialogContext.mounted) _message(dialogContext, localizedFailureMessage(AppLocalizations.of(dialogContext), error)); }
+            }, child: Text(l10n.create)),
           ],
         )),
       );
@@ -77,16 +89,17 @@ class _WarrantyTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final expired = warranty.expiryDate.isBefore(DateTime.now());
     return Card(margin: const EdgeInsets.only(bottom: 8), child: ListTile(
       leading: CircleAvatar(child: Icon(expired ? Icons.event_busy_outlined : Icons.verified_outlined)),
-      title: Text('Job ${warranty.jobCardId}'),
-      subtitle: Text('Vehicle ${warranty.vehicleId} · ${warranty.durationMonths} months · expires ${_date(warranty.expiryDate)}'),
-      trailing: Chip(label: Text(expired ? 'Expired' : warranty.status.name)),
+      title: Text(l10n.warrantyTileJobTitle(warranty.jobCardId)),
+      subtitle: Text(l10n.warrantyTileSubtitle(warranty.vehicleId, warranty.durationMonths, _date(warranty.expiryDate))),
+      trailing: Chip(label: Text(expired ? l10n.warrantyStatusExpired : warranty.status.localizedLabel(l10n))),
     ));
   }
 }
 
 String _date(DateTime value) => '${value.year}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
-String? _required(String? value) => value == null || value.trim().isEmpty ? 'Required' : null;
+String? _required(AppLocalizations l10n, String? value) => value == null || value.trim().isEmpty ? l10n.validationRequired : null;
 void _message(BuildContext context, String value) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(value)));

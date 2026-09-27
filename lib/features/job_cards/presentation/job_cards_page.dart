@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../app/localization/enum_l10n.dart';
+import '../../../app/widgets/page_header.dart';
+import '../../../core/errors/localized_failure.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../auth/domain/auth_user.dart';
 import '../data/firebase_job_card_repository.dart';
 import '../domain/job_card.dart';
@@ -14,12 +18,13 @@ class JobCardsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final shopId = user.shopId;
-    if (shopId == null) return const Center(child: Text('No workshop is assigned to this account.'));
+    if (shopId == null) return Center(child: Text(l10n.noWorkshopAssigned));
     return StreamBuilder<List<JobCard>>(
       stream: repository.watchJobCards(shopId),
       builder: (context, snapshot) {
-        if (snapshot.hasError) return const Center(child: Text('Unable to load job cards.'));
+        if (snapshot.hasError) return Center(child: Text(l10n.jobCardsLoadError));
         if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
         var jobCards = snapshot.data!;
         if (user.role == UserRole.mechanic) {
@@ -46,33 +51,25 @@ class _JobCardsContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final canCreate = user.role != UserRole.mechanic;
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Job cards', style: Theme.of(context).textTheme.headlineMedium),
-                  const SizedBox(height: 4),
-                  Text('${jobCards.length} visible job cards · ${user.role?.label ?? 'Staff'}'),
-                ],
-              ),
-            ),
-            if (canCreate)
-              FilledButton.icon(
-                onPressed: () => _showCreateDialog(context),
-                icon: const Icon(Icons.add),
-                label: const Text('New job card'),
-              ),
-          ],
+        PageHeader(
+          title: l10n.navJobCards,
+          subtitle: l10n.jobCardsSubtitle(jobCards.length, user.role?.localizedLabel(l10n) ?? l10n.jobCardsFallbackRole),
+          action: canCreate
+              ? FilledButton.icon(
+                  onPressed: () => _showCreateDialog(context),
+                  icon: const Icon(Icons.add),
+                  label: Text(l10n.jobCardsNew),
+                )
+              : null,
         ),
         const SizedBox(height: 24),
         if (jobCards.isEmpty)
-          const Card(child: Padding(padding: EdgeInsets.all(32), child: Center(child: Text('No job cards found.'))))
+          Card(child: Padding(padding: const EdgeInsets.all(32), child: Center(child: Text(l10n.jobCardsEmpty))))
         else
           ...jobCards.map((jobCard) => _JobCardTile(user: user, repository: repository, shopId: shopId, jobCard: jobCard)),
       ],
@@ -80,6 +77,7 @@ class _JobCardsContent extends StatelessWidget {
   }
 
   Future<void> _showCreateDialog(BuildContext context) async {
+    final l10n = AppLocalizations.of(context);
     final customerController = TextEditingController();
     final vehicleController = TextEditingController();
     final complaintController = TextEditingController();
@@ -90,7 +88,7 @@ class _JobCardsContent extends StatelessWidget {
         context: context,
         builder: (dialogContext) => StatefulBuilder(
           builder: (context, setDialogState) => AlertDialog(
-            title: const Text('Create job card'),
+            title: Text(l10n.jobCardsCreateTitle),
             content: Form(
               key: formKey,
               child: Column(
@@ -98,31 +96,31 @@ class _JobCardsContent extends StatelessWidget {
                 children: [
                   TextFormField(
                     controller: customerController,
-                    decoration: const InputDecoration(labelText: 'Customer ID'),
-                    validator: _required,
+                    decoration: InputDecoration(labelText: l10n.customerIdLabel),
+                    validator: (value) => _required(l10n, value),
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: vehicleController,
-                    decoration: const InputDecoration(labelText: 'Vehicle ID'),
-                    validator: _required,
+                    decoration: InputDecoration(labelText: l10n.vehicleIdLabel),
+                    validator: (value) => _required(l10n, value),
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: complaintController,
                     maxLines: 3,
-                    decoration: const InputDecoration(labelText: 'Customer complaint'),
-                    validator: _required,
+                    decoration: InputDecoration(labelText: l10n.jobCardsComplaintLabel),
+                    validator: (value) => _required(l10n, value),
                   ),
                   const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
+                  DropdownButtonFormField<String>(isExpanded: true,
                     value: priority,
-                    decoration: const InputDecoration(labelText: 'Priority'),
-                    items: const [
-                      DropdownMenuItem(value: 'LOW', child: Text('Low')),
-                      DropdownMenuItem(value: 'NORMAL', child: Text('Normal')),
-                      DropdownMenuItem(value: 'HIGH', child: Text('High')),
-                      DropdownMenuItem(value: 'URGENT', child: Text('Urgent')),
+                    decoration: InputDecoration(labelText: l10n.jobCardsPriorityLabel),
+                    items: [
+                      DropdownMenuItem(value: 'LOW', child: Text(l10n.jobCardsPriorityLow)),
+                      DropdownMenuItem(value: 'NORMAL', child: Text(l10n.jobCardsPriorityNormal)),
+                      DropdownMenuItem(value: 'HIGH', child: Text(l10n.jobCardsPriorityHigh)),
+                      DropdownMenuItem(value: 'URGENT', child: Text(l10n.jobCardsPriorityUrgent)),
                     ],
                     onChanged: (value) => setDialogState(() => priority = value ?? 'NORMAL'),
                   ),
@@ -130,7 +128,7 @@ class _JobCardsContent extends StatelessWidget {
               ),
             ),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+              TextButton(onPressed: () => Navigator.pop(dialogContext), child: Text(l10n.cancel)),
               FilledButton(
                 onPressed: () async {
                   if (!formKey.currentState!.validate()) return;
@@ -156,10 +154,10 @@ class _JobCardsContent extends StatelessWidget {
                     ));
                     if (dialogContext.mounted) Navigator.pop(dialogContext);
                   } on JobCardFailure catch (error) {
-                    if (dialogContext.mounted) _showMessage(dialogContext, error.message);
+                    if (dialogContext.mounted) _showMessage(dialogContext, localizedFailureMessage(AppLocalizations.of(dialogContext), error));
                   }
                 },
-                child: const Text('Create'),
+                child: Text(l10n.create),
               ),
             ],
           ),
@@ -183,6 +181,7 @@ class _JobCardTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final nextStatuses = JobCardStatus.values.where((status) => jobCard.status.canTransitionTo(status, user.role!)).toList();
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
@@ -194,14 +193,14 @@ class _JobCardTile extends StatelessWidget {
             Row(
               children: [
                 Expanded(child: Text(jobCard.jobNumber, style: Theme.of(context).textTheme.titleLarge)),
-                Chip(label: Text(jobCard.status.label)),
+                Chip(label: Text(jobCard.status.localizedLabel(l10n))),
               ],
             ),
             const SizedBox(height: 8),
             Text(jobCard.complaint),
             const SizedBox(height: 4),
-            Text('Priority: ${jobCard.priority} · Vehicle: ${jobCard.vehicleId}'),
-            if (jobCard.assignedMechanicIds.isNotEmpty) Text('Assigned mechanics: ${jobCard.assignedMechanicIds.length}'),
+            Text(l10n.jobCardsTilePriorityVehicle(jobCard.priority, jobCard.vehicleId)),
+            if (jobCard.assignedMechanicIds.isNotEmpty) Text(l10n.jobCardsAssignedMechanics(jobCard.assignedMechanicIds.length)),
             if (nextStatuses.isNotEmpty) ...[
               const SizedBox(height: 12),
               Wrap(
@@ -211,7 +210,7 @@ class _JobCardTile extends StatelessWidget {
                   for (final status in nextStatuses)
                     OutlinedButton(
                       onPressed: () => _transition(context, status),
-                      child: Text(status.label),
+                      child: Text(status.localizedLabel(l10n)),
                     ),
                 ],
               ),
@@ -222,7 +221,7 @@ class _JobCardTile extends StatelessWidget {
                 child: TextButton.icon(
                   onPressed: () => _assignMechanic(context),
                   icon: const Icon(Icons.person_add_alt_1_outlined),
-                  label: const Text('Assign mechanic'),
+                  label: Text(l10n.jobCardsAssignMechanic),
                 ),
               ),
           ],
@@ -235,28 +234,29 @@ class _JobCardTile extends StatelessWidget {
     try {
       await repository.transitionJobCard(shopId: shopId, jobCardId: jobCard.jobCardId, target: status);
     } on JobCardFailure catch (error) {
-      if (context.mounted) _showMessage(context, error.message);
+      if (context.mounted) _showMessage(context, localizedFailureMessage(AppLocalizations.of(context), error));
     }
   }
 
   Future<void> _assignMechanic(BuildContext context) async {
+    final l10n = AppLocalizations.of(context);
     final controller = TextEditingController();
     final formKey = GlobalKey<FormState>();
     try {
       await showDialog<void>(
         context: context,
         builder: (dialogContext) => AlertDialog(
-          title: const Text('Assign mechanic'),
+          title: Text(l10n.jobCardsAssignMechanic),
           content: Form(
             key: formKey,
             child: TextFormField(
               controller: controller,
-              decoration: const InputDecoration(labelText: 'Mechanic user ID'),
-              validator: _required,
+              decoration: InputDecoration(labelText: l10n.jobCardsMechanicIdLabel),
+              validator: (value) => _required(l10n, value),
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+            TextButton(onPressed: () => Navigator.pop(dialogContext), child: Text(l10n.cancel)),
             FilledButton(
               onPressed: () async {
                 if (!formKey.currentState!.validate()) return;
@@ -264,10 +264,10 @@ class _JobCardTile extends StatelessWidget {
                   await repository.assignMechanic(shopId: shopId, jobCardId: jobCard.jobCardId, mechanicUid: controller.text);
                   if (dialogContext.mounted) Navigator.pop(dialogContext);
                 } on JobCardFailure catch (error) {
-                  if (dialogContext.mounted) _showMessage(dialogContext, error.message);
+                  if (dialogContext.mounted) _showMessage(dialogContext, localizedFailureMessage(AppLocalizations.of(dialogContext), error));
                 }
               },
-              child: const Text('Assign'),
+              child: Text(l10n.jobCardsAssign),
             ),
           ],
         ),
@@ -278,7 +278,7 @@ class _JobCardTile extends StatelessWidget {
   }
 }
 
-String? _required(String? value) => value == null || value.trim().isEmpty ? 'Required' : null;
+String? _required(AppLocalizations l10n, String? value) => value == null || value.trim().isEmpty ? l10n.validationRequired : null;
 
 void _showMessage(BuildContext context, String message) {
   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));

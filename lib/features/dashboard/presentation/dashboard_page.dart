@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/sync/sync_status.dart';
+import '../../../l10n/app_localizations.dart';
 
 class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key, required this.syncStatus});
@@ -9,16 +10,17 @@ class DashboardPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
         Text(
-          'Workshop overview',
+          l10n.workshopOverview,
           style: Theme.of(context).textTheme.headlineMedium,
         ),
         const SizedBox(height: 8),
         Text(
-          'A clear view of today\'s work, even when the network is unavailable.',
+          l10n.workshopOverviewSubtitle,
           style: Theme.of(context).textTheme.bodyLarge,
         ),
         const SizedBox(height: 24),
@@ -27,38 +29,38 @@ class DashboardPage extends StatelessWidget {
         LayoutBuilder(
           builder: (context, constraints) {
             final columns = constraints.maxWidth >= 900 ? 4 : 2;
-            return GridView.count(
-              crossAxisCount: columns,
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
-              childAspectRatio: 1.45,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              children: const [
-                _MetricCard(
+            const spacing = 16.0;
+            final cardWidth = (constraints.maxWidth - spacing * (columns - 1)) / columns;
+            // A grid forces a fixed cell height, which clips the cards as soon
+            // as a translated label wraps. Wrap lets each card size itself.
+            return Wrap(
+              spacing: spacing,
+              runSpacing: spacing,
+              children: [
+                SizedBox(width: cardWidth, child: _MetricCard(
                   icon: Icons.assignment_outlined,
-                  label: 'Open job cards',
+                  label: l10n.metricOpenJobCards,
                   value: '0',
-                  detail: 'No records loaded yet',
-                ),
-                _MetricCard(
+                  detail: l10n.metricOpenJobCardsDetail,
+                )),
+                SizedBox(width: cardWidth, child: _MetricCard(
                   icon: Icons.directions_car_outlined,
-                  label: 'Vehicles today',
+                  label: l10n.metricVehiclesToday,
                   value: '0',
-                  detail: 'Ready for local search',
-                ),
-                _MetricCard(
+                  detail: l10n.metricVehiclesTodayDetail,
+                )),
+                SizedBox(width: cardWidth, child: _MetricCard(
                   icon: Icons.build_outlined,
-                  label: 'In progress',
+                  label: l10n.metricInProgress,
                   value: '0',
-                  detail: 'Assigned mechanic work',
-                ),
-                _MetricCard(
+                  detail: l10n.metricInProgressDetail,
+                )),
+                SizedBox(width: cardWidth, child: _MetricCard(
                   icon: Icons.payments_outlined,
-                  label: 'Pending balance',
+                  label: l10n.metricPendingBalance,
                   value: '0.00',
-                  detail: 'Currency will come from shop settings',
-                ),
+                  detail: l10n.metricPendingBalanceDetail,
+                )),
               ],
             );
           },
@@ -77,6 +79,7 @@ class _SyncBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final colorScheme = Theme.of(context).colorScheme;
     return Card(
       color: colorScheme.secondaryContainer,
@@ -90,8 +93,8 @@ class _SyncBanner extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(status.label, style: Theme.of(context).textTheme.titleMedium),
-                  Text(status.description),
+                  Text(status.label(l10n), style: Theme.of(context).textTheme.titleMedium),
+                  Text(status.description(l10n)),
                 ],
               ),
             ),
@@ -121,14 +124,15 @@ class _MetricCard extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Icon(icon, color: Theme.of(context).colorScheme.primary),
-            const Spacer(),
+            const SizedBox(height: 12),
             Text(label, style: Theme.of(context).textTheme.labelLarge),
             const SizedBox(height: 4),
             Text(value, style: Theme.of(context).textTheme.headlineSmall),
-            Text(detail, maxLines: 1, overflow: TextOverflow.ellipsis),
+            Text(detail, maxLines: 2, overflow: TextOverflow.ellipsis),
           ],
         ),
       ),
@@ -141,26 +145,27 @@ class _TodaySection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Today', style: Theme.of(context).textTheme.titleLarge),
+            Text(l10n.todaySectionTitle, style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 12),
-            const ListTile(
+            ListTile(
               contentPadding: EdgeInsets.zero,
-              leading: Icon(Icons.search_outlined),
-              title: Text('License plate search'),
-              subtitle: Text('Local indexed search will be available in the Customers and Vehicles phase.'),
+              leading: const Icon(Icons.search_outlined),
+              title: Text(l10n.todayPlateSearchTitle),
+              subtitle: Text(l10n.todayPlateSearchSubtitle),
             ),
             const Divider(),
-            const ListTile(
+            ListTile(
               contentPadding: EdgeInsets.zero,
-              leading: Icon(Icons.sync_outlined),
-              title: Text('Sync queue'),
-              subtitle: Text('Every offline mutation will remain visible until cloud synchronization completes.'),
+              leading: const Icon(Icons.sync_outlined),
+              title: Text(l10n.todaySyncQueueTitle),
+              subtitle: Text(l10n.todaySyncQueueSubtitle),
             ),
           ],
         ),

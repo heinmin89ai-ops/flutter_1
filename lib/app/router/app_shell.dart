@@ -20,6 +20,44 @@ import '../../features/billing/presentation/billing_page.dart';
 import '../../core/sync/sync_engine.dart';
 import '../../features/reports/domain/report_repository.dart';
 import '../../features/reports/presentation/reports_page.dart';
+import '../../l10n/app_localizations.dart';
+import '../localization/app_locale.dart';
+import '../localization/enum_l10n.dart';
+
+enum ShellSection {
+  dashboard,
+  vehicles,
+  jobCards,
+  inventory,
+  billing,
+  warranty,
+  shops,
+  reports,
+}
+
+extension ShellSectionLabel on ShellSection {
+  String label(AppLocalizations l10n) => switch (this) {
+    ShellSection.dashboard => l10n.navDashboard,
+    ShellSection.vehicles => l10n.navVehicles,
+    ShellSection.jobCards => l10n.navJobCards,
+    ShellSection.inventory => l10n.navInventory,
+    ShellSection.billing => l10n.navBilling,
+    ShellSection.warranty => l10n.navWarranty,
+    ShellSection.shops => l10n.navShopsStaff,
+    ShellSection.reports => l10n.navReports,
+  };
+
+  IconData get icon => switch (this) {
+    ShellSection.dashboard => Icons.dashboard_outlined,
+    ShellSection.vehicles => Icons.directions_car_outlined,
+    ShellSection.jobCards => Icons.assignment_outlined,
+    ShellSection.inventory => Icons.inventory_2_outlined,
+    ShellSection.billing => Icons.receipt_long_outlined,
+    ShellSection.warranty => Icons.verified_outlined,
+    ShellSection.shops => Icons.groups_outlined,
+    ShellSection.reports => Icons.analytics_outlined,
+  };
+}
 
 class AppShell extends StatefulWidget {
   const AppShell({
@@ -54,6 +92,7 @@ class AppShell extends StatefulWidget {
 }
 
 class _AppShellState extends State<AppShell> {
+  final _scaffoldKey = GlobalKey<ScaffoldState>();
   int _selectedIndex = 0;
   SyncStatus _syncStatus = SyncStatus.pending;
 
@@ -70,44 +109,50 @@ class _AppShellState extends State<AppShell> {
     super.dispose();
   }
 
-  List<_NavigationDestinationData> get _destinations {
-    final destinations = <_NavigationDestinationData>[
-      const _NavigationDestinationData(Icons.dashboard_outlined, 'Dashboard'),
-      const _NavigationDestinationData(Icons.directions_car_outlined, 'Vehicles'),
-      const _NavigationDestinationData(Icons.assignment_outlined, 'Job cards'),
-      const _NavigationDestinationData(Icons.inventory_2_outlined, 'Inventory'),
-      const _NavigationDestinationData(Icons.receipt_long_outlined, 'Billing'),
-      const _NavigationDestinationData(Icons.verified_outlined, 'Warranty'),
+  List<ShellSection> get _sections {
+    final sections = <ShellSection>[
+      ShellSection.dashboard,
+      ShellSection.vehicles,
+      ShellSection.jobCards,
+      ShellSection.inventory,
+      ShellSection.billing,
+      ShellSection.warranty,
     ];
     if (widget.user.role == UserRole.superAdmin || widget.user.role == UserRole.shopOwner) {
-      destinations.add(const _NavigationDestinationData(Icons.groups_outlined, 'Shops & staff'));
+      sections.add(ShellSection.shops);
     }
     if (widget.user.role == UserRole.superAdmin || widget.user.role == UserRole.shopOwner || widget.user.role == UserRole.manager) {
-      destinations.add(const _NavigationDestinationData(Icons.analytics_outlined, 'Reports'));
+      sections.add(ShellSection.reports);
     }
-    return destinations;
+    return sections;
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final localeController = AppLocaleScope.of(context);
     final isWide = MediaQuery.sizeOf(context).width >= 900;
-    final destinations = _destinations;
-    if (_selectedIndex >= destinations.length) _selectedIndex = 0;
-    final selectedLabel = destinations[_selectedIndex].label;
+    final sections = _sections;
+    if (_selectedIndex >= sections.length) _selectedIndex = 0;
+    final selectedSection = sections[_selectedIndex];
 
     return Scaffold(
+      key: _scaffoldKey,
       appBar: AppBar(
-        title: Text(selectedLabel),
-        actions: [
-          _SyncStatusButton(
+        title: Text(selectedSection.label(l10n)),
+        actions: [          _SyncStatusButton(
             status: _syncStatus,
             onPressed: _cycleSyncStatus,
           ),
           const SizedBox(width: 12),
           PopupMenuButton<String>(
-            tooltip: 'Account menu',
+            tooltip: l10n.accountMenu,
             onSelected: (value) {
-              if (value == 'signOut') widget.authRepository.signOut();
+              if (value == 'signOut') {
+                widget.authRepository.signOut();
+              } else if (value == 'language') {
+                localeController.toggle();
+              }
             },
             itemBuilder: (context) => [
               PopupMenuItem<String>(
@@ -118,15 +163,25 @@ class _AppShellState extends State<AppShell> {
               PopupMenuItem<String>(
                 value: 'role',
                 enabled: false,
-                child: Text(widget.user.role?.label ?? 'Unknown role'),
+                child: Text(widget.user.role?.localizedLabel(l10n) ?? l10n.unknownRole),
               ),
               const PopupMenuDivider(),
-              const PopupMenuItem<String>(
+              PopupMenuItem<String>(
+                value: 'language',
+                child: ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.translate),
+                  title: Text(l10n.languageMenuLabel),
+                  subtitle: Text(localeController.isBurmese ? 'English' : 'မြန်မာ'),
+                ),
+              ),
+              const PopupMenuDivider(),
+              PopupMenuItem<String>(
                 value: 'signOut',
                 child: ListTile(
                   contentPadding: EdgeInsets.zero,
-                  leading: Icon(Icons.logout),
-                  title: Text('Sign out'),
+                  leading: const Icon(Icons.logout),
+                  title: Text(l10n.signOut),
                 ),
               ),
             ],
@@ -143,57 +198,47 @@ class _AppShellState extends State<AppShell> {
               onDestinationSelected: _selectDestination,
               labelType: NavigationRailLabelType.all,
               destinations: [
-                for (final destination in destinations)
+                for (final section in sections)
                   NavigationRailDestination(
-                    icon: Icon(destination.icon),
-                    selectedIcon: Icon(destination.icon),
-                    label: Text(destination.label),
+                    icon: Icon(section.icon),
+                    selectedIcon: Icon(section.icon),
+                    label: Text(section.label(l10n)),
                   ),
               ],
             ),
           Expanded(
-            child: _selectedIndex == 0
-                ? DashboardPage(syncStatus: _syncStatus)
-                : selectedLabel == 'Vehicles'
-                    ? VehiclesPage(user: widget.user, repository: widget.customerVehicleRepository)
-                    : selectedLabel == 'Job cards'
-                      ? JobCardsPage(user: widget.user, repository: widget.jobCardRepository)
-                      : selectedLabel == 'Inventory'
-                        ? InventoryPage(user: widget.user, repository: widget.inventoryRepository)
-                        : selectedLabel == 'Warranty'
-                          ? WarrantyPage(user: widget.user, repository: widget.warrantyRepository)
-                          : selectedLabel == 'Billing'
-                            ? BillingPage(user: widget.user, repository: widget.billingRepository)
-                          : selectedLabel == 'Reports'
-                            ? ReportsPage(user: widget.user, repository: widget.reportRepository)
-                      : selectedLabel == 'Shops & staff'
-                        ? ShopsPage(
-                        user: widget.user,
-                        shopRepository: widget.shopRepository,
-                        staffRepository: widget.staffRepository,
-                          )
-                        : _ComingSoonPage(title: selectedLabel),
+            child: switch (selectedSection) {
+              ShellSection.dashboard => DashboardPage(syncStatus: _syncStatus),
+              ShellSection.vehicles => VehiclesPage(user: widget.user, repository: widget.customerVehicleRepository),
+              ShellSection.jobCards => JobCardsPage(user: widget.user, repository: widget.jobCardRepository),
+              ShellSection.inventory => InventoryPage(user: widget.user, repository: widget.inventoryRepository),
+              ShellSection.warranty => WarrantyPage(user: widget.user, repository: widget.warrantyRepository),
+              ShellSection.billing => BillingPage(user: widget.user, repository: widget.billingRepository),
+              ShellSection.reports => ReportsPage(user: widget.user, repository: widget.reportRepository),
+              ShellSection.shops => ShopsPage(
+                user: widget.user,
+                shopRepository: widget.shopRepository,
+                staffRepository: widget.staffRepository,
+              ),
+            },
           ),
         ],
       ),
-      bottomNavigationBar: isWide
+      // Eight sections do not fit in a bottom bar without their labels
+      // wrapping, so phones get a labelled drawer instead.
+      drawer: isWide
           ? null
-          : NavigationBar(
-              selectedIndex: _selectedIndex,
-              onDestinationSelected: _selectDestination,
-              destinations: [
-                for (final destination in destinations)
-                  NavigationDestination(
-                    icon: Icon(destination.icon),
-                    label: destination.label,
-                  ),
-              ],
+          : _SectionDrawer(
+              sections: sections,
+              selected: selectedSection,
+              onSelected: _selectDestination,
             ),
     );
   }
 
   void _selectDestination(int index) {
     setState(() => _selectedIndex = index);
+    _scaffoldKey.currentState?.closeDrawer();
   }
 
   void _cycleSyncStatus() {
@@ -205,11 +250,36 @@ class _AppShellState extends State<AppShell> {
   }
 }
 
-class _NavigationDestinationData {
-  const _NavigationDestinationData(this.icon, this.label);
+class _SectionDrawer extends StatelessWidget {
+  const _SectionDrawer({
+    required this.sections,
+    required this.selected,
+    required this.onSelected,
+  });
 
-  final IconData icon;
-  final String label;
+  final List<ShellSection> sections;
+  final ShellSection selected;
+  final ValueChanged<int> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return Drawer(
+      child: SafeArea(
+        child: ListView(
+          children: [
+            for (var index = 0; index < sections.length; index++)
+              ListTile(
+                leading: Icon(sections[index].icon),
+                title: Text(sections[index].label(l10n)),
+                selected: sections[index] == selected,
+                onTap: () => onSelected(index),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _SyncStatusButton extends StatelessWidget {
@@ -220,6 +290,7 @@ class _SyncStatusButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final color = switch (status) {
       SyncStatus.online => Colors.green,
       SyncStatus.syncing => Colors.orange,
@@ -227,29 +298,16 @@ class _SyncStatusButton extends StatelessWidget {
       SyncStatus.offline || SyncStatus.failed => Colors.red,
     };
 
+    // The app bar has no room for a text label next to the account menu on a
+    // phone, so the status shows as a colour-coded icon there.
+    final isNarrow = MediaQuery.sizeOf(context).width < 720;
+    final icon = Icon(Icons.cloud_outlined, color: color);
+
     return Tooltip(
-      message: status.description,
-      child: OutlinedButton.icon(
-        onPressed: onPressed,
-        icon: Icon(Icons.cloud_outlined, color: color),
-        label: Text(status.label),
-      ),
-    );
-  }
-}
-
-class _ComingSoonPage extends StatelessWidget {
-  const _ComingSoonPage({required this.title});
-
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Text(
-        '$title module will be added with its local repository and sync contract.',
-        textAlign: TextAlign.center,
-      ),
+      message: status.description(l10n),
+      child: isNarrow
+          ? IconButton(onPressed: onPressed, icon: icon)
+          : OutlinedButton.icon(onPressed: onPressed, icon: icon, label: Text(status.label(l10n))),
     );
   }
 }

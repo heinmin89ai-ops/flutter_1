@@ -7,21 +7,6 @@ enum UserRole {
 }
 
 extension UserRoleLabel on UserRole {
-  String get label {
-    switch (this) {
-      case UserRole.superAdmin:
-        return 'Super Admin';
-      case UserRole.shopOwner:
-        return 'Shop Owner';
-      case UserRole.manager:
-        return 'Manager';
-      case UserRole.frontDesk:
-        return 'Front Desk';
-      case UserRole.mechanic:
-        return 'Mechanic';
-    }
-  }
-
   static UserRole? fromClaim(Object? value) {
     if (value is! String) return null;
     switch (value.toUpperCase()) {

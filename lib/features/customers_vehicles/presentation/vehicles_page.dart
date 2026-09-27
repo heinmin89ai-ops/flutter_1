@@ -3,6 +3,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../app/localization/enum_l10n.dart';
+import '../../../app/widgets/page_header.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../auth/domain/auth_user.dart';
 import '../domain/customer.dart';
 import '../domain/customer_vehicle_repository.dart';
@@ -26,9 +29,18 @@ class _VehiclesPageState extends State<VehiclesPage> {
   List<Vehicle> _vehicles = const [];
   List<Vehicle> _visibleVehicles = const [];
   bool _isSearching = false;
-  String? _errorMessage;
+
+  /// Holds a stable error code rather than prose so the message can be
+  /// translated with the widget tree's [AppLocalizations] on every rebuild.
+  String? _errorCode;
 
   String get _shopId => widget.user.shopId!;
+
+  String? _errorText(AppLocalizations l10n) => switch (_errorCode) {
+    _vehiclesErrorLoad => l10n.vehiclesLoadError,
+    _vehiclesErrorSearch => l10n.vehiclesSearchUnavailable,
+    _ => null,
+  };
 
   @override
   void initState() {
@@ -40,7 +52,7 @@ class _VehiclesPageState extends State<VehiclesPage> {
         _visibleVehicles = vehicles;
       });
     }, onError: (_) {
-      if (mounted) setState(() => _errorMessage = 'Unable to load local vehicle records.');
+      if (mounted) setState(() => _errorCode = _vehiclesErrorLoad);
     });
   }
 
@@ -53,27 +65,19 @@ class _VehiclesPageState extends State<VehiclesPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final errorText = _errorText(l10n);
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Vehicles & customers', style: Theme.of(context).textTheme.headlineMedium),
-                  const SizedBox(height: 4),
-                  const Text('Search license plates locally, even when the workshop is offline.'),
-                ],
-              ),
-            ),
-            FilledButton.icon(
-              onPressed: _showRegistrationDialog,
-              icon: const Icon(Icons.add),
-              label: const Text('Register vehicle'),
-            ),
-          ],
+        PageHeader(
+          title: l10n.vehiclesPageTitle,
+          subtitle: l10n.vehiclesPageSubtitle,
+          action: FilledButton.icon(
+            onPressed: _showRegistrationDialog,
+            icon: const Icon(Icons.add),
+            label: Text(l10n.vehiclesRegisterVehicle),
+          ),
         ),
         const SizedBox(height: 24),
         TextField(
@@ -81,13 +85,13 @@ class _VehiclesPageState extends State<VehiclesPage> {
           onChanged: _search,
           textInputAction: TextInputAction.search,
           decoration: InputDecoration(
-            labelText: 'Search license plate',
-            hintText: 'e.g. ABC-123',
+            labelText: l10n.vehiclesSearchLabel,
+            hintText: l10n.vehiclesSearchHint,
             prefixIcon: const Icon(Icons.search),
             suffixIcon: _searchController.text.isEmpty
                 ? null
                 : IconButton(
-                    tooltip: 'Clear search',
+                    tooltip: l10n.vehiclesClearSearch,
                     onPressed: () {
                       _searchController.clear();
                       _search('');
@@ -97,12 +101,12 @@ class _VehiclesPageState extends State<VehiclesPage> {
           ),
         ),
         const SizedBox(height: 16),
-        if (_errorMessage != null) ...[
-          Text(_errorMessage!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+        if (errorText != null) ...[
+          Text(errorText, style: TextStyle(color: Theme.of(context).colorScheme.error)),
           const SizedBox(height: 16),
         ],
         if (_visibleVehicles.isEmpty)
-          const Card(child: Padding(padding: EdgeInsets.all(32), child: Center(child: Text('No vehicles found.' ))))
+          Card(child: Padding(padding: const EdgeInsets.all(32), child: Center(child: Text(l10n.vehiclesEmpty))))
         else
           ..._visibleVehicles.map((vehicle) => _VehicleTile(vehicle: vehicle)),
       ],
@@ -112,7 +116,7 @@ class _VehiclesPageState extends State<VehiclesPage> {
   Future<void> _search(String value) async {
     setState(() {
       _isSearching = value.trim().isNotEmpty;
-      _errorMessage = null;
+      _errorCode = null;
     });
     if (value.trim().isEmpty) {
       setState(() {
@@ -125,11 +129,12 @@ class _VehiclesPageState extends State<VehiclesPage> {
       final matches = await widget.repository.searchVehicles(shopId: _shopId, licensePlate: value);
       if (mounted) setState(() => _visibleVehicles = matches);
     } catch (_) {
-      if (mounted) setState(() => _errorMessage = 'Local search is unavailable.');
+      if (mounted) setState(() => _errorCode = _vehiclesErrorSearch);
     }
   }
 
   Future<void> _showRegistrationDialog() async {
+    final l10n = AppLocalizations.of(context);
     final customerName = TextEditingController();
     final customerPhone = TextEditingController();
     final plate = TextEditingController();
@@ -142,43 +147,43 @@ class _VehiclesPageState extends State<VehiclesPage> {
         context: context,
         builder: (dialogContext) => StatefulBuilder(
           builder: (context, setDialogState) => AlertDialog(
-            title: const Text('Register customer and vehicle'),
+            title: Text(l10n.vehiclesDialogTitle),
             content: SingleChildScrollView(
               child: Form(
                 key: formKey,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    DropdownButtonFormField<CustomerType>(
+                    DropdownButtonFormField<CustomerType>(isExpanded: true,
                       value: customerType,
-                      decoration: const InputDecoration(labelText: 'Customer type'),
-                      items: CustomerType.values.map((type) => DropdownMenuItem(value: type, child: Text(type.label))).toList(),
+                      decoration: InputDecoration(labelText: l10n.vehiclesCustomerTypeLabel),
+                      items: CustomerType.values.map((type) => DropdownMenuItem(value: type, child: Text(type.localizedLabel(l10n)))).toList(),
                       onChanged: (value) => setDialogState(() => customerType = value ?? CustomerType.individual),
                     ),
                     const SizedBox(height: 12),
                     TextFormField(
                       controller: customerName,
-                      decoration: const InputDecoration(labelText: 'Customer name'),
-                      validator: (value) => value == null || value.trim().isEmpty ? 'Enter a customer name.' : null,
+                      decoration: InputDecoration(labelText: l10n.vehiclesCustomerNameLabel),
+                      validator: (value) => value == null || value.trim().isEmpty ? l10n.vehiclesValidationCustomerName : null,
                     ),
                     const SizedBox(height: 12),
-                    TextFormField(controller: customerPhone, decoration: const InputDecoration(labelText: 'Phone')),
+                    TextFormField(controller: customerPhone, decoration: InputDecoration(labelText: l10n.vehiclesPhoneLabel)),
                     const SizedBox(height: 12),
                     TextFormField(
                       controller: plate,
-                      decoration: const InputDecoration(labelText: 'License plate'),
-                      validator: (value) => LicensePlateNormalizer.normalize(value ?? '').isEmpty ? 'Enter a license plate.' : null,
+                      decoration: InputDecoration(labelText: l10n.vehiclesPlateLabel),
+                      validator: (value) => LicensePlateNormalizer.normalize(value ?? '').isEmpty ? l10n.vehiclesValidationPlate : null,
                     ),
                     const SizedBox(height: 12),
-                    TextFormField(controller: make, decoration: const InputDecoration(labelText: 'Make')),
+                    TextFormField(controller: make, decoration: InputDecoration(labelText: l10n.vehiclesMakeLabel)),
                     const SizedBox(height: 12),
-                    TextFormField(controller: model, decoration: const InputDecoration(labelText: 'Model')),
+                    TextFormField(controller: model, decoration: InputDecoration(labelText: l10n.vehiclesModelLabel)),
                   ],
                 ),
               ),
             ),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+              TextButton(onPressed: () => Navigator.pop(dialogContext), child: Text(l10n.cancel)),
               FilledButton(
                 onPressed: () async {
                   if (!formKey.currentState!.validate()) return;
@@ -217,11 +222,11 @@ class _VehiclesPageState extends State<VehiclesPage> {
                     if (dialogContext.mounted) Navigator.pop(dialogContext);
                   } catch (_) {
                     if (dialogContext.mounted) {
-                      ScaffoldMessenger.of(dialogContext).showSnackBar(const SnackBar(content: Text('Unable to save customer and vehicle.')));
+                      ScaffoldMessenger.of(dialogContext).showSnackBar(SnackBar(content: Text(l10n.vehiclesSaveError)));
                     }
                   }
                 },
-                child: const Text('Register'),
+                child: Text(l10n.vehiclesRegisterSubmit),
               ),
             ],
           ),
@@ -236,6 +241,9 @@ class _VehiclesPageState extends State<VehiclesPage> {
     }
   }
 }
+
+const _vehiclesErrorLoad = 'load';
+const _vehiclesErrorSearch = 'search';
 
 class _VehicleTile extends StatelessWidget {
   const _VehicleTile({required this.vehicle});

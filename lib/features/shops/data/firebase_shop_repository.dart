@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 
+import '../../../core/errors/localized_failure.dart';
 import '../domain/shop.dart';
 import '../domain/shop_repository.dart';
 
@@ -41,7 +42,8 @@ class FirebaseShopRepository implements ShopRepository {
       final data = Map<String, dynamic>.from(result.data as Map);
       return Shop.fromMap(data['shopId'] as String, data);
     } on FirebaseFunctionsException catch (error) {
-      throw ShopManagementFailure(_messageForCode(error.code));
+      final failure = _failureForCode(error.code);
+      throw ShopManagementFailure(failure.message, messageKey: failure.messageKey);
     }
   }
 
@@ -60,25 +62,20 @@ class FirebaseShopRepository implements ShopRepository {
     });
   }
 
-  String _messageForCode(String code) {
+  ({String messageKey, String message}) _failureForCode(String code) {
     switch (code) {
       case 'permission-denied':
-        return 'You are not authorized to create a workshop.';
+        return (messageKey: 'errShopPermission', message: 'You are not authorized to create a workshop.');
       case 'already-exists':
-        return 'This workshop code is already in use.';
+        return (messageKey: 'errShopCodeExists', message: 'This workshop code is already in use.');
       case 'invalid-argument':
-        return 'Workshop name and code are required.';
+        return (messageKey: 'errShopFieldsRequired', message: 'Workshop name and code are required.');
       default:
-        return 'Workshop management is temporarily unavailable.';
+        return (messageKey: 'errShopUnavailable', message: 'Workshop management is temporarily unavailable.');
     }
   }
 }
 
-class ShopManagementFailure implements Exception {
-  const ShopManagementFailure(this.message);
-
-  final String message;
-
-  @override
-  String toString() => message;
+class ShopManagementFailure extends LocalizedFailure {
+  const ShopManagementFailure(super.message, {super.messageKey = 'errShopUnavailable'});
 }

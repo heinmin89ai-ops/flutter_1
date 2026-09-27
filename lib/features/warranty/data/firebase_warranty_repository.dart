@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 
+import '../../../core/errors/localized_failure.dart';
 import '../domain/warranty.dart';
 import '../domain/warranty_repository.dart';
 
@@ -32,16 +33,18 @@ class FirebaseWarrantyRepository implements WarrantyRepository {
       });
       return Warranty.fromMap('server', _mapTimestamps(Map<String, dynamic>.from(result.data as Map)));
     } on FirebaseFunctionsException catch (error) {
-      throw WarrantyFailure(_messageForCode(error.code));
+      final failure = _failureForCode(error.code);
+      throw WarrantyFailure(failure.message, messageKey: failure.messageKey);
     }
   }
 
   Map<String, dynamic> _mapTimestamps(Map<String, dynamic> data) => data.map((key, value) => MapEntry(key, value is Timestamp ? value.toDate() : value));
 
-  String _messageForCode(String code) => code == 'permission-denied' ? 'You are not authorized to create warranties.' : 'Warranty operation is temporarily unavailable.';
+  ({String messageKey, String message}) _failureForCode(String code) => code == 'permission-denied'
+      ? (messageKey: 'errWarrantyPermission', message: 'You are not authorized to create warranties.')
+      : (messageKey: 'errWarrantyUnavailable', message: 'Warranty operation is temporarily unavailable.');
 }
 
-class WarrantyFailure implements Exception {
-  const WarrantyFailure(this.message);
-  final String message;
+class WarrantyFailure extends LocalizedFailure {
+  const WarrantyFailure(super.message, {super.messageKey = 'errWarrantyUnavailable'});
 }

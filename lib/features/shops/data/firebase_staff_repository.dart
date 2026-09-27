@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 
+import '../../../core/errors/localized_failure.dart';
 import '../../auth/domain/auth_user.dart';
 import '../domain/staff_member.dart';
 import '../domain/staff_repository.dart';
@@ -59,7 +60,8 @@ class FirebaseStaffRepository implements StaffRepository {
     try {
       await _functions.httpsCallable(name).call(data);
     } on FirebaseFunctionsException catch (error) {
-      throw StaffManagementFailure(_messageForCode(error.code));
+      final failure = _failureForCode(error.code);
+      throw StaffManagementFailure(failure.message, messageKey: failure.messageKey);
     }
   }
 
@@ -78,25 +80,20 @@ class FirebaseStaffRepository implements StaffRepository {
     }
   }
 
-  String _messageForCode(String code) {
+  ({String messageKey, String message}) _failureForCode(String code) {
     switch (code) {
       case 'permission-denied':
-        return 'You are not authorized to manage this workshop staff.';
+        return (messageKey: 'errStaffPermission', message: 'You are not authorized to manage this workshop staff.');
       case 'already-exists':
-        return 'A staff account with this email already exists.';
+        return (messageKey: 'errStaffEmailExists', message: 'A staff account with this email already exists.');
       case 'invalid-argument':
-        return 'The staff details are invalid.';
+        return (messageKey: 'errStaffInvalid', message: 'The staff details are invalid.');
       default:
-        return 'Staff management is temporarily unavailable.';
+        return (messageKey: 'errStaffUnavailable', message: 'Staff management is temporarily unavailable.');
     }
   }
 }
 
-class StaffManagementFailure implements Exception {
-  const StaffManagementFailure(this.message);
-
-  final String message;
-
-  @override
-  String toString() => message;
+class StaffManagementFailure extends LocalizedFailure {
+  const StaffManagementFailure(super.message, {super.messageKey = 'errStaffUnavailable'});
 }

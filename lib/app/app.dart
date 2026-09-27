@@ -13,8 +13,10 @@ import '../features/shops/domain/shop_repository.dart';
 import '../features/shops/domain/staff_repository.dart';
 import '../core/sync/sync_engine.dart';
 import '../features/reports/domain/report_repository.dart';
+import 'localization/app_locale.dart';
+import '../l10n/app_localizations.dart';
 
-class WorkshopOpsApp extends StatelessWidget {
+class WorkshopOpsApp extends StatefulWidget {
   const WorkshopOpsApp({
     super.key,
     required this.authRepository,
@@ -41,22 +43,48 @@ class WorkshopOpsApp extends StatelessWidget {
   final StaffRepository staffRepository;
 
   @override
+  State<WorkshopOpsApp> createState() => _WorkshopOpsAppState();
+}
+
+class _WorkshopOpsAppState extends State<WorkshopOpsApp> {
+  late final AppLocaleController _localeController = AppLocaleController(
+    WidgetsBinding.instance.platformDispatcher.locales.any((locale) => locale.languageCode == 'my')
+        ? const Locale('my')
+        : const Locale('en'),
+  );
+
+  @override
+  void dispose() {
+    _localeController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Workshop Ops',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.light(),
-      home: AuthGate(
-        authRepository: authRepository,
-        customerVehicleRepository: customerVehicleRepository,
-        jobCardRepository: jobCardRepository,
-        inventoryRepository: inventoryRepository,
-        warrantyRepository: warrantyRepository,
-        billingRepository: billingRepository,
-        syncEngine: syncEngine,
-        reportRepository: reportRepository,
-        shopRepository: shopRepository,
-        staffRepository: staffRepository,
+    return AppLocaleScope(
+      controller: _localeController,
+      child: ListenableBuilder(
+        listenable: _localeController,
+        builder: (context, _) => MaterialApp(
+          title: 'Workshop Ops',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.light(),
+          locale: _localeController.locale,
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          home: AuthGate(
+            authRepository: widget.authRepository,
+            customerVehicleRepository: widget.customerVehicleRepository,
+            jobCardRepository: widget.jobCardRepository,
+            inventoryRepository: widget.inventoryRepository,
+            warrantyRepository: widget.warrantyRepository,
+            billingRepository: widget.billingRepository,
+            syncEngine: widget.syncEngine,
+            reportRepository: widget.reportRepository,
+            shopRepository: widget.shopRepository,
+            staffRepository: widget.staffRepository,
+          ),
+        ),
       ),
     );
   }

@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 
+import '../../../core/errors/localized_failure.dart';
 import '../domain/inventory_item.dart';
 import '../domain/inventory_movement.dart';
 import '../domain/inventory_repository.dart';
@@ -59,24 +60,23 @@ class FirebaseInventoryRepository implements InventoryRepository {
         'reason': reason,
       });
     } on FirebaseFunctionsException catch (error) {
-      throw InventoryFailure(_messageForCode(error.code));
+      final failure = _failureForCode(error.code);
+      throw InventoryFailure(failure.message, messageKey: failure.messageKey);
     }
   }
 
-  String _messageForCode(String code) {
+  ({String messageKey, String message}) _failureForCode(String code) {
     switch (code) {
       case 'permission-denied':
-        return 'You are not authorized to manage inventory.';
+        return (messageKey: 'errInventoryPermission', message: 'You are not authorized to manage inventory.');
       case 'failed-precondition':
-        return 'The stock movement would make inventory negative.';
+        return (messageKey: 'errInventoryNegativeStock', message: 'The stock movement would make inventory negative.');
       default:
-        return 'Inventory operation is temporarily unavailable.';
+        return (messageKey: 'errInventoryUnavailable', message: 'Inventory operation is temporarily unavailable.');
     }
   }
 }
 
-class InventoryFailure implements Exception {
-  const InventoryFailure(this.message);
-
-  final String message;
+class InventoryFailure extends LocalizedFailure {
+  const InventoryFailure(super.message, {super.messageKey = 'errInventoryUnavailable'});
 }

@@ -1,3 +1,5 @@
+import '../../l10n/app_localizations.dart';
+
 enum SyncStatus {
   online,
   offline,
@@ -7,33 +9,19 @@ enum SyncStatus {
 }
 
 extension SyncStatusLabel on SyncStatus {
-  String get label {
-    switch (this) {
-      case SyncStatus.online:
-        return 'Online';
-      case SyncStatus.offline:
-        return 'Offline';
-      case SyncStatus.syncing:
-        return 'Syncing';
-      case SyncStatus.pending:
-        return 'Pending changes';
-      case SyncStatus.failed:
-        return 'Sync failed';
-    }
-  }
+  String label(AppLocalizations l10n) => switch (this) {
+    SyncStatus.online => l10n.syncStatusOnline,
+    SyncStatus.offline => l10n.syncStatusOffline,
+    SyncStatus.syncing => l10n.syncStatusSyncing,
+    SyncStatus.pending => l10n.syncStatusPending,
+    SyncStatus.failed => l10n.syncStatusFailed,
+  };
 
-  String get description {
-    switch (this) {
-      case SyncStatus.online:
-        return 'All local changes are synchronized.';
-      case SyncStatus.offline:
-        return 'Changes will be queued on this device.';
-      case SyncStatus.syncing:
-        return 'Uploading local changes securely.';
-      case SyncStatus.pending:
-        return 'Local work is saved and waiting to sync.';
-      case SyncStatus.failed:
-        return 'Some changes need attention before retrying.';
-    }
-  }
+  String description(AppLocalizations l10n) => switch (this) {
+    SyncStatus.online => l10n.syncDescOnline,
+    SyncStatus.offline => l10n.syncDescOffline,
+    SyncStatus.syncing => l10n.syncDescSyncing,
+    SyncStatus.pending => l10n.syncDescPending,
+    SyncStatus.failed => l10n.syncDescFailed,
+  };
 }

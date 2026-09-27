@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 
+import '../../../core/errors/localized_failure.dart';
 import '../domain/job_card.dart';
 import '../domain/job_card_repository.dart';
 
@@ -48,7 +49,8 @@ class FirebaseJobCardRepository implements JobCardRepository {
       });
       return JobCard.fromMap(jobCardId, _mapTimestamps(Map<String, dynamic>.from(result.data as Map)));
     } on FirebaseFunctionsException catch (error) {
-      throw JobCardFailure(_messageForCode(error.code));
+      final failure = _failureForCode(error.code);
+      throw JobCardFailure(failure.message, messageKey: failure.messageKey);
     }
   }
 
@@ -61,7 +63,8 @@ class FirebaseJobCardRepository implements JobCardRepository {
         'mechanicUid': mechanicUid.trim(),
       });
     } on FirebaseFunctionsException catch (error) {
-      throw JobCardFailure(_messageForCode(error.code));
+      final failure = _failureForCode(error.code);
+      throw JobCardFailure(failure.message, messageKey: failure.messageKey);
     }
   }
 
@@ -80,7 +83,8 @@ class FirebaseJobCardRepository implements JobCardRepository {
         'diagnosis': diagnosis,
       });
     } on FirebaseFunctionsException catch (error) {
-      throw JobCardFailure(_messageForCode(error.code));
+      final failure = _failureForCode(error.code);
+      throw JobCardFailure(failure.message, messageKey: failure.messageKey);
     }
   }
 
@@ -91,25 +95,20 @@ class FirebaseJobCardRepository implements JobCardRepository {
     });
   }
 
-  String _messageForCode(String code) {
+  ({String messageKey, String message}) _failureForCode(String code) {
     switch (code) {
       case 'permission-denied':
-        return 'You are not authorized to perform this job-card action.';
+        return (messageKey: 'errJobCardPermission', message: 'You are not authorized to perform this job-card action.');
       case 'failed-precondition':
-        return 'This job card changed. Refresh and try again.';
+        return (messageKey: 'errJobCardStale', message: 'This job card changed. Refresh and try again.');
       case 'not-found':
-        return 'Job card was not found in this workshop.';
+        return (messageKey: 'errJobCardNotFound', message: 'Job card was not found in this workshop.');
       default:
-        return 'Job card operation is temporarily unavailable.';
+        return (messageKey: 'errJobCardUnavailable', message: 'Job card operation is temporarily unavailable.');
     }
   }
 }
 
-class JobCardFailure implements Exception {
-  const JobCardFailure(this.message);
-
-  final String message;
-
-  @override
-  String toString() => message;
+class JobCardFailure extends LocalizedFailure {
+  const JobCardFailure(super.message, {super.messageKey = 'errJobCardUnavailable'});
 }
