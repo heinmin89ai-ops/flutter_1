@@ -159,6 +159,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get syncDescFailed => 'Some changes need attention before retrying.';
 
   @override
+  String get retry => 'Retry';
+
+  @override
   String get languageMenuLabel => 'Change language';
 
   @override
@@ -314,7 +317,21 @@ class AppLocalizationsEn extends AppLocalizations {
       'Covers workmanship and replaced parts under workshop warranty terms.';
 
   @override
-  String get warrantyCompletedJobIdLabel => 'Completed job card ID';
+  String get warrantyCompletedJobLabel => 'Completed job card';
+
+  @override
+  String get warrantyNoFinishedJobs =>
+      'Complete a job card before creating a warranty.';
+
+  @override
+  String warrantyCustomerLabel(Object customerId) {
+    return 'Customer $customerId';
+  }
+
+  @override
+  String warrantyVehicleLabel(Object vehicleId) {
+    return 'Vehicle $vehicleId';
+  }
 
   @override
   String get warrantyDurationLabel => 'Duration';
@@ -432,7 +449,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get billingCreateTitle => 'Create invoice';
 
   @override
-  String get billingJobCardIdLabel => 'Job card ID';
+  String get billingJobCardIdLabel => 'Job card';
+
+  @override
+  String get billingNoJobCards =>
+      'Create a job card before issuing an invoice.';
 
   @override
   String get billingItemTypeLabel => 'Item type';

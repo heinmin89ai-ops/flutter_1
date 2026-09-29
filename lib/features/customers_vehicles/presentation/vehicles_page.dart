@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../../app/localization/enum_l10n.dart';
 import '../../../app/widgets/page_header.dart';
+import '../../../app/widgets/dismiss_safe_dialog.dart';
 import '../../../core/firestore/resilient_query.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../auth/domain/auth_user.dart';
@@ -144,8 +145,8 @@ class _VehiclesPageState extends State<VehiclesPage> {
     final formKey = GlobalKey<FormState>();
     var customerType = CustomerType.individual;
     try {
-      await showDialog<void>(
-        context: context,
+      await showDialogUntilDismissed(
+        context,
         builder: (dialogContext) => StatefulBuilder(
           builder: (context, setDialogState) => AlertDialog(
             title: Text(l10n.vehiclesDialogTitle),

@@ -1,19 +1,14 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:cloud_functions/cloud_functions.dart';
 
 import '../../../core/errors/localized_failure.dart';
 import '../domain/shop.dart';
 import '../domain/shop_repository.dart';
 
 class FirebaseShopRepository implements ShopRepository {
-  FirebaseShopRepository({
-    FirebaseFirestore? firestore,
-    FirebaseFunctions? functions,
-  })  : _firestore = firestore ?? FirebaseFirestore.instance,
-        _functions = functions ?? FirebaseFunctions.instance;
+  FirebaseShopRepository({FirebaseFirestore? firestore})
+      : _firestore = firestore ?? FirebaseFirestore.instance;
 
   final FirebaseFirestore _firestore;
-  final FirebaseFunctions _functions;
 
   @override
   Stream<Shop?> watchShop(String shopId) {
@@ -34,14 +29,45 @@ class FirebaseShopRepository implements ShopRepository {
 
   @override
   Future<Shop> createShop({required String name, required String code}) async {
+    final trimmedName = name.trim();
+    final upperCode = code.trim().toUpperCase();
+    if (trimmedName.isEmpty || upperCode.isEmpty) {
+      throw const ShopManagementFailure(
+        'Workshop name and code are required.',
+        messageKey: 'errShopFieldsRequired',
+      );
+    }
     try {
-      final result = await _functions.httpsCallable('adminCreateShop').call({
-        'name': name.trim(),
-        'code': code.trim().toUpperCase(),
+      // Rules have no way to query, so the duplicate-code guard adminCreateShop
+      // used sits here instead. A race between two admins could still produce a
+      // repeated code; nothing keys a tenant off it, so the worst case is a
+      // confusing entry in the platform admin's own list.
+      final clash = await _firestore
+          .collection('shops')
+          .where('code', isEqualTo: upperCode)
+          .limit(1)
+          .get();
+      if (clash.docs.isNotEmpty) {
+        throw const ShopManagementFailure(
+          'This workshop code is already in use.',
+          messageKey: 'errShopCodeExists',
+        );
+      }
+      final reference = _firestore.collection('shops').doc();
+      await reference.set(<String, Object?>{
+        'shopId': reference.id,
+        'name': trimmedName,
+        'code': upperCode,
+        'currency': 'USD',
+        'timezone': 'UTC',
+        'isActive': true,
+        'enabledModules': <String>[],
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
       });
-      final data = Map<String, dynamic>.from(result.data as Map);
-      return Shop.fromMap(data['shopId'] as String, data);
-    } on FirebaseFunctionsException catch (error) {
+      final snapshot = await reference.get();
+      return Shop.fromMap(reference.id, snapshot.data() ?? const <String, dynamic>{});
+    } on FirebaseException catch (error) {
       final failure = _failureForCode(error.code);
       throw ShopManagementFailure(failure.message, messageKey: failure.messageKey);
     }
@@ -66,10 +92,6 @@ class FirebaseShopRepository implements ShopRepository {
     switch (code) {
       case 'permission-denied':
         return (messageKey: 'errShopPermission', message: 'You are not authorized to create a workshop.');
-      case 'already-exists':
-        return (messageKey: 'errShopCodeExists', message: 'This workshop code is already in use.');
-      case 'invalid-argument':
-        return (messageKey: 'errShopFieldsRequired', message: 'Workshop name and code are required.');
       default:
         return (messageKey: 'errShopUnavailable', message: 'Workshop management is temporarily unavailable.');
     }

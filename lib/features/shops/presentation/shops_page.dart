@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 
 import '../../../app/localization/enum_l10n.dart';
 import '../../../app/widgets/load_failure.dart';
+import '../../../app/widgets/dismiss_safe_dialog.dart';
 import '../../../app/widgets/page_header.dart';
 import '../../../core/errors/localized_failure.dart';
 import '../../../core/firestore/resilient_query.dart';
+import '../../../core/firestore/retryable_query.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../auth/domain/auth_user.dart';
 import '../data/firebase_shop_repository.dart';
@@ -55,9 +57,9 @@ class _PlatformShopsView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return StreamBuilder<List<Shop>>(
-      stream: resilientQuery(() => repository.watchAllShops()),
-      builder: (context, snapshot) {
+    return RetryableQuery<List<Shop>>(
+      subscribe: () => repository.watchAllShops(),
+      builder: (context, snapshot, retry) {
         if (!snapshot.hasData && !snapshot.hasError) return const Center(child: CircularProgressIndicator());
         final shops = snapshot.data ?? const <Shop>[];
         return _PageFrame(
@@ -69,7 +71,7 @@ class _PlatformShopsView extends StatelessWidget {
             label: Text(l10n.shopsCreateWorkshop),
           ),
           child: snapshot.hasError
-              ? LoadFailure(message: l10n.shopsLoadWorkshopsError)
+              ? LoadFailure(message: l10n.shopsLoadWorkshopsError, onRetry: retry)
               : shops.isEmpty
               ? _EmptyState(message: l10n.shopsWorkshopsEmpty)
               : ListView.separated(
@@ -88,8 +90,8 @@ class _PlatformShopsView extends StatelessWidget {
     final nameController = TextEditingController();
     final codeController = TextEditingController();
     final formKey = GlobalKey<FormState>();
-    await showDialog<void>(
-      context: context,
+    await showDialogUntilDismissed(
+      context,
       builder: (dialogContext) => AlertDialog(
         title: Text(l10n.shopsCreateWorkshop),
         content: Form(
@@ -151,9 +153,9 @@ class _ShopStaffView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return StreamBuilder<Shop?>(
-      stream: resilientQuery(() => shopRepository.watchShop(shopId)),
-      builder: (context, shopSnapshot) {
+    return RetryableQuery<Shop?>(
+      subscribe: () => shopRepository.watchShop(shopId),
+      builder: (context, shopSnapshot, retry) {
         if (!shopSnapshot.hasData && !shopSnapshot.hasError) {
           return const Center(child: CircularProgressIndicator());
         }
@@ -173,17 +175,17 @@ class _ShopStaffView extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               if (shopSnapshot.hasError) ...[
-                LoadFailure(message: l10n.shopsLoadSettingsError),
+                LoadFailure(message: l10n.shopsLoadSettingsError, onRetry: retry),
                 const SizedBox(height: 8),
               ],
-              StreamBuilder<List<StaffMember>>(
-                stream: resilientQuery(() => staffRepository.watchStaff(shopId)),
-                builder: (context, staffSnapshot) {
+              RetryableQuery<List<StaffMember>>(
+                subscribe: () => staffRepository.watchStaff(shopId),
+                builder: (context, staffSnapshot, staffRetry) {
                   if (!staffSnapshot.hasData && !staffSnapshot.hasError) {
                     return const Center(child: CircularProgressIndicator());
                   }
                   final staff = staffSnapshot.data ?? const <StaffMember>[];
-                  if (staffSnapshot.hasError) return LoadFailure(message: l10n.shopsLoadStaffError);
+                  if (staffSnapshot.hasError) return LoadFailure(message: l10n.shopsLoadStaffError, onRetry: staffRetry);
                   if (staff.isEmpty) return _EmptyState(message: l10n.shopsStaffEmpty);
                   return Column(
                     children: [
@@ -245,8 +247,8 @@ class _ShopStaffView extends StatelessWidget {
     var role = UserRole.frontDesk;
     final formKey = GlobalKey<FormState>();
     StaffInvitation? created;
-    await showDialog<void>(
-      context: context,
+    await showDialogUntilDismissed(
+      context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           title: Text(l10n.shopsCreateStaffTitle),

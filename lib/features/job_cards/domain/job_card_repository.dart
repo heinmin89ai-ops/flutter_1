@@ -1,4 +1,3 @@
-import '../../auth/domain/auth_user.dart';
 import 'job_card.dart';
 
 abstract interface class JobCardRepository {

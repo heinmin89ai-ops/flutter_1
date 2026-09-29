@@ -16,3 +16,9 @@ functions/lib/
 google-services.json
 GoogleService-Info.plist
 firebase-debug.log
+
+# Local Firestore rules tests
+firestore-tests/node_modules/
+firestore-tests/firestore-debug.log
+firestore-debug.log
+firestore-test.log

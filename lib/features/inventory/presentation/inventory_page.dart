@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../app/localization/enum_l10n.dart';
+import '../../../app/widgets/dismiss_safe_dialog.dart';
 import '../../../app/widgets/load_failure.dart';
 import '../../../app/widgets/page_header.dart';
 import '../../../core/errors/localized_failure.dart';
-import '../../../core/firestore/resilient_query.dart';
+import '../../../core/firestore/retryable_query.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../auth/domain/auth_user.dart';
 import '../data/firebase_inventory_repository.dart';
@@ -24,15 +25,16 @@ class InventoryPage extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final shopId = user.shopId;
     if (shopId == null) return Center(child: Text(l10n.noWorkshopAssigned));
-    return StreamBuilder<List<InventoryItem>>(
-      stream: resilientQuery(() => repository.watchItems(shopId)),
-      builder: (context, snapshot) {
+    return RetryableQuery<List<InventoryItem>>(
+      subscribe: () => repository.watchItems(shopId),
+      builder: (context, snapshot, retry) {
         if (!snapshot.hasData && !snapshot.hasError) return const Center(child: CircularProgressIndicator());
         return _InventoryContent(
           user: user,
           shopId: shopId,
           items: snapshot.data ?? const <InventoryItem>[],
           loadFailed: snapshot.hasError,
+          onRetry: retry,
           repository: repository,
         );
       },
@@ -47,6 +49,7 @@ class _InventoryContent extends StatelessWidget {
     required this.items,
     required this.repository,
     this.loadFailed = false,
+    this.onRetry,
   });
 
   final AuthUser user;
@@ -54,6 +57,7 @@ class _InventoryContent extends StatelessWidget {
   final List<InventoryItem> items;
   final InventoryRepository repository;
   final bool loadFailed;
+  final VoidCallback? onRetry;
 
   @override
   Widget build(BuildContext context) {
@@ -71,7 +75,7 @@ class _InventoryContent extends StatelessWidget {
         ),
         const SizedBox(height: 24),
         if (loadFailed)
-          LoadFailure(message: l10n.inventoryLoadError)
+          LoadFailure(message: l10n.inventoryLoadError, onRetry: onRetry)
         else if (items.isEmpty)
           Card(child: Padding(padding: const EdgeInsets.all(32), child: Center(child: Text(l10n.inventoryEmpty))))
         else
@@ -88,8 +92,8 @@ class _InventoryContent extends StatelessWidget {
     final selling = TextEditingController(text: '0');
     final formKey = GlobalKey<FormState>();
     try {
-      await showDialog<void>(
-        context: context,
+      await showDialogUntilDismissed(
+        context,
         builder: (dialogContext) => AlertDialog(
           title: Text(l10n.inventoryCreateTitle),
           content: Form(
@@ -137,8 +141,8 @@ class _InventoryContent extends StatelessWidget {
     var type = InventoryMovementType.stockIn;
     final formKey = GlobalKey<FormState>();
     try {
-      await showDialog<void>(
-        context: context,
+      await showDialogUntilDismissed(
+        context,
         builder: (dialogContext) => StatefulBuilder(
           builder: (context, setDialogState) => AlertDialog(
             title: Text(l10n.inventoryMovementTitle(item.name)),

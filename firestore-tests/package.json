@@ -1,0 +1,13 @@
+{
+  "name": "workshop-ops-rules-tests",
+  "private": true,
+  "type": "module",
+  "description": "Offline Firestore security-rule tests run against the local emulator (no paid plan needed).",
+  "scripts": {
+    "test": "firebase emulators:exec --only firestore --project test-96eab \"node rules.test.mjs\""
+  },
+  "dependencies": {
+    "@firebase/rules-unit-testing": "^3.0.4",
+    "firebase": "^10.14.1"
+  }
+}

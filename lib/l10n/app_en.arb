@@ -53,6 +53,7 @@
   "syncDescSyncing": "Uploading local changes securely.",
   "syncDescPending": "Local work is saved and waiting to sync.",
   "syncDescFailed": "Some changes need attention before retrying.",
+  "retry": "Retry",
 
   "languageMenuLabel": "Change language",
   "roleSuperAdmin": "Super Admin",
@@ -113,7 +114,20 @@
     }
   },
   "warrantyDefaultTerms": "Covers workmanship and replaced parts under workshop warranty terms.",
-  "warrantyCompletedJobIdLabel": "Completed job card ID",
+  "warrantyCompletedJobLabel": "Completed job card",
+  "warrantyNoFinishedJobs": "Complete a job card before creating a warranty.",
+  "warrantyCustomerLabel": "Customer {customerId}",
+  "@warrantyCustomerLabel": {
+    "placeholders": {
+      "customerId": {}
+    }
+  },
+  "warrantyVehicleLabel": "Vehicle {vehicleId}",
+  "@warrantyVehicleLabel": {
+    "placeholders": {
+      "vehicleId": {}
+    }
+  },
   "warrantyDurationLabel": "Duration",
   "warrantyDurationMonths": "{count} months",
   "@warrantyDurationMonths": {
@@ -182,7 +196,8 @@
   },
   "billingNewInvoice": "New invoice",
   "billingCreateTitle": "Create invoice",
-  "billingJobCardIdLabel": "Job card ID",
+  "billingJobCardIdLabel": "Job card",
+  "billingNoJobCards": "Create a job card before issuing an invoice.",
   "billingItemTypeLabel": "Item type",
   "billingDescriptionLabel": "Description",
   "billingUnitPriceLabel": "Unit price (minor units)",

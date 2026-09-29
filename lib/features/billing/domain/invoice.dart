@@ -59,7 +59,14 @@ class Invoice {
       jobCardId: map['jobCardId'] as String? ?? '', customerId: map['customerId'] as String? ?? '', vehicleId: map['vehicleId'] as String? ?? '',
       items: rawItems is List ? rawItems.whereType<Map>().map((item) => InvoiceItem(type: InvoiceItemType.values.firstWhere((type) => type.name.toUpperCase() == item['type'], orElse: () => InvoiceItemType.service), description: item['description'] as String? ?? '', quantity: (item['quantity'] as num?)?.toInt() ?? 0, unitPriceMinorUnits: (item['unitPriceMinorUnits'] as num?)?.toInt() ?? 0, discountMinorUnits: (item['discountMinorUnits'] as num?)?.toInt() ?? 0, taxMinorUnits: (item['taxMinorUnits'] as num?)?.toInt() ?? 0)).toList() : const [],
       subtotalMinorUnits: (map['subtotalMinorUnits'] as num?)?.toInt() ?? 0, discountMinorUnits: (map['discountMinorUnits'] as num?)?.toInt() ?? 0, taxMinorUnits: (map['taxMinorUnits'] as num?)?.toInt() ?? 0, totalMinorUnits: (map['totalMinorUnits'] as num?)?.toInt() ?? 0, amountPaidMinorUnits: (map['amountPaidMinorUnits'] as num?)?.toInt() ?? 0, balanceMinorUnits: (map['balanceMinorUnits'] as num?)?.toInt() ?? 0,
-      status: InvoiceStatus.values.firstWhere((status) => status.name.toUpperCase() == (map['status'] as String? ?? 'DRAFT'), orElse: () => InvoiceStatus.draft),
+      status: _statusFrom(map['status']),
     );
   }
+
+  // Stored values are SCREAMING_SNAKE_CASE ('PARTIALLY_PAID'), enum names are
+  // lowerCamel, so the underscore has to go before comparing.
+  static InvoiceStatus _statusFrom(Object? value) => InvoiceStatus.values.firstWhere(
+        (status) => status.name.toUpperCase() == (value as String? ?? 'DRAFT').replaceAll('_', '').toUpperCase(),
+        orElse: () => InvoiceStatus.draft,
+      );
 }

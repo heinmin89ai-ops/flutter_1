@@ -10,20 +10,31 @@ service cloud.firestore {
     // ID-token claims: custom claims can only be written by the Admin SDK,
     // which requires a paid plan. Repeated get() calls are served from the
     // per-request cache, so this costs one document read per request.
-    function profile() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    function profilePath() {
+      return /databases/$(database)/documents/users/$(request.auth.uid);
+    }
+
+    // `get(path).exists` is not a property the evaluator exposes -- reading it
+    // aborts the whole rule with "Property exists is undefined", which denies
+    // every request that touches it. `exists(path)` is the supported form.
+    function profileExists() {
+      return exists(profilePath());
+    }
+
+    function profileData() {
+      return get(profilePath()).data;
     }
 
     function active() {
-      return signedIn() && profile().exists && profile().data.isActive != false;
+      return signedIn() && profileExists() && profileData().isActive != false;
     }
 
     function role() {
-      return profile().data.role;
+      return profileData().role;
     }
 
     function shopOf() {
-      return profile().data.shopId;
+      return profileData().shopId;
     }
 
     function isSuperAdmin() {
@@ -42,8 +53,44 @@ service cloud.firestore {
       return hasShop(shopId) && (role() == 'MANAGER' || role() == 'SHOP_OWNER');
     }
 
+    function invitationPath(id) {
+      return /databases/$(database)/documents/staffInvitations/$(id);
+    }
+
     function invitation(id) {
-      return get(/databases/$(database)/documents/staffInvitations/$(id));
+      return get(invitationPath(id)).data;
+    }
+
+    // get() on the document a rule is already evaluating for is denied
+    // outright, so reading a profile must not go through profile() when the
+    // caller is asking for their own document. The self check leads and the
+    // operators short-circuit, so that denied read is never reached.
+    function canReadProfile(uid) {
+      return (signedIn() && uid == request.auth.uid)
+        || isSuperAdmin()
+        || (active() && shopOf() == resource.data.shopId);
+    }
+
+    function invitationBacked(data) {
+      return 'invitationId' in data
+        && exists(invitationPath(data.invitationId))
+        && invitation(data.invitationId).status == 'PENDING'
+        && invitation(data.invitationId).email == request.auth.token.email
+        && invitation(data.invitationId).shopId == data.shopId
+        && invitation(data.invitationId).role == data.role
+        && invitation(data.invitationId).name == data.name;
+    }
+
+    // Accounts created before profile documents existed carry their authority
+    // as ID-token claims, which only the Admin SDK can write. Allowing the
+    // owner to copy exactly those claims into their own document bootstraps
+    // the single source of truth the rest of these rules read, needs no paid
+    // plan, and cannot hand out privileges nobody granted.
+    function claimBacked(data) {
+      return 'role' in request.auth.token
+        && 'shopId' in request.auth.token
+        && data.role == request.auth.token.role
+        && data.shopId == request.auth.token.shopId;
     }
 
     match /shops/{shopId} {
@@ -51,28 +98,42 @@ service cloud.firestore {
       allow update: if isOwner(shopId)
         && request.resource.data.shopId == resource.data.shopId
         && request.resource.data.isActive == resource.data.isActive;
-      allow create, delete: if false;
+
+      // adminCreateShop used to sit behind a paid-only Function. Rules cannot
+      // look for a duplicate `code` (no query from a rule), so the app checks
+      // it first; a clash would only confuse the platform's own admin list,
+      // never another workshop's data, because every tenant check elsewhere
+      // goes through the shopId the caller already owns.
+      allow create: if isSuperAdmin()
+        && request.resource.data.shopId == shopId
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.code is string
+        && request.resource.data.code.size() > 0
+        && request.resource.data.isActive == true
+        && request.resource.data.currency is string
+        && request.resource.data.timezone is string
+        && request.resource.data.enabledModules is list;
+
+      allow delete: if false;
     }
 
     match /users/{uid} {
-      allow read: if isSuperAdmin()
-        || (active() && shopOf() == resource.data.shopId);
+      allow read: if canReadProfile(uid);
 
       // A new staff member creates their own profile by presenting the
       // invitation the workshop owner issued for their exact email address.
       // Shop, role and name are copied from that invitation, never trusted
       // from the client, so nobody can hand themselves a privileged role.
+      // Owners may only write an empty permission list, which keeps a
+      // self-created profile from granting itself extra abilities.
       allow create: if signedIn()
         && uid == request.auth.uid
         && request.resource.data.uid == uid
         && request.resource.data.email == request.auth.token.email
         && request.resource.data.isActive == true
-        && invitation(request.resource.data.invitationId).exists
-        && invitation(request.resource.data.invitationId).data.status == 'PENDING'
-        && invitation(request.resource.data.invitationId).data.email == request.auth.token.email
-        && invitation(request.resource.data.invitationId).data.shopId == request.resource.data.shopId
-        && invitation(request.resource.data.invitationId).data.role == request.resource.data.role
-        && invitation(request.resource.data.invitationId).data.name == request.resource.data.name;
+        && request.resource.data.permissions == []
+        && (invitationBacked(request.resource.data) || claimBacked(request.resource.data));
 
       // Owners manage the role and active state of their own staff. Nobody may
       // edit their own privileges, which also blocks self-lockout, and no one
@@ -91,8 +152,12 @@ service cloud.firestore {
     // The document id is a high-entropy code the owner shares out of band, so
     // possession of the code plus the matching sign-in address is the claim.
     match /staffInvitations/{invitationId} {
-      allow read: if (signedIn() && resource.data.email == request.auth.token.email)
-        || isOwner(resource.data.shopId);
+      // Members lead with the shop check because during a `list` the evaluator
+      // only exposes the fields the query constrains: reading resource.data
+      // .email there aborts the whole query with "Property email is undefined
+      // on object", denying every member of the shop.
+      allow read: if hasShop(resource.data.shopId)
+        || (signedIn() && resource.data.email == request.auth.token.email);
 
       allow create: if isOwner(request.resource.data.shopId)
         && request.resource.data.status == 'PENDING'
@@ -135,39 +200,295 @@ service cloud.firestore {
       allow delete: if isOwner(resource.data.shopId);
     }
 
+    // Free-plan builds have no Cloud Functions, so the job-card status machine
+    // that transitionJobCard used to own is enforced here instead. The table
+    // mirrors JobCardStatus.canTransitionTo in the app; CANCELLED is handled
+    // separately because it is reachable from every state except CLOSED.
+    function jobTransitions() {
+      return {
+        'DRAFT': { 'OPEN': ['SHOP_OWNER', 'MANAGER', 'FRONT_DESK'] },
+        'OPEN': { 'ASSIGNED': ['SHOP_OWNER', 'MANAGER'] },
+        'ASSIGNED': { 'IN_PROGRESS': ['SHOP_OWNER', 'MANAGER', 'MECHANIC'] },
+        'IN_PROGRESS': {
+          'WAITING_FOR_PARTS': ['SHOP_OWNER', 'MANAGER', 'MECHANIC', 'FRONT_DESK'],
+          'WAITING_FOR_APPROVAL': ['SHOP_OWNER', 'MANAGER', 'MECHANIC', 'FRONT_DESK'],
+          'COMPLETED': ['SHOP_OWNER', 'MANAGER', 'MECHANIC', 'FRONT_DESK'],
+        },
+        'WAITING_FOR_PARTS': { 'IN_PROGRESS': ['SHOP_OWNER', 'MANAGER', 'MECHANIC'] },
+        'WAITING_FOR_APPROVAL': { 'COMPLETED': ['SHOP_OWNER', 'MANAGER'] },
+        'COMPLETED': { 'READY_FOR_PICKUP': ['SHOP_OWNER', 'MANAGER'] },
+        'READY_FOR_PICKUP': { 'CLOSED': ['SHOP_OWNER', 'MANAGER', 'FRONT_DESK'] },
+      };
+    }
+
+    function statusMoveAllowed(from, to, callerRole) {
+      return (to == 'CANCELLED' && from != 'CLOSED' && callerRole != 'MECHANIC')
+        || ((from in jobTransitions())
+          && (to in jobTransitions()[from])
+          && (callerRole in jobTransitions()[from][to]));
+    }
+
+    // A mechanic may only be picked from this workshop's active crew, which is
+    // the check assignJobCard used to make with the Admin SDK. Rules CEL has no
+    // list comprehension macro, so the single-member write the app makes is
+    // validated directly.
+    function crewMemberOk(shopId, uid) {
+      return exists(/databases/$(database)/documents/users/$(uid))
+        && get(/databases/$(database)/documents/users/$(uid)).data.shopId == shopId
+        && get(/databases/$(database)/documents/users/$(uid)).data.role == 'MECHANIC'
+        && get(/databases/$(database)/documents/users/$(uid)).data.isActive != false;
+    }
+
     match /jobCards/{jobCardId} {
       allow read: if signedIn() && hasShop(resource.data.shopId);
       allow create: if signedIn()
         && hasShop(request.resource.data.shopId)
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.status == 'DRAFT';
-      allow update, delete: if false;
+
+      // The identity fields of a job card are immutable once written, and a
+      // write may only touch either the work record or the status trail --
+      // never both, and never a field nobody asked to change.
+      allow update: if signedIn()
+        && hasShop(resource.data.shopId)
+        && request.resource.data.shopId == resource.data.shopId
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.customerId == resource.data.customerId
+        && request.resource.data.vehicleId == resource.data.vehicleId
+        && request.resource.data.jobNumber == resource.data.jobNumber
+        && (
+          (
+            request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['repairNotes', 'diagnosis', 'updatedAt'])
+            && (isManager(resource.data.shopId)
+              || (active() && role() == 'MECHANIC' && request.auth.uid in resource.data.assignedMechanicIds))
+          )
+          || (
+            request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['status', 'assignedMechanicIds', 'updatedAt', 'openedAt', 'startedAt', 'completedAt', 'closedAt'])
+            && statusMoveAllowed(resource.data.status, request.resource.data.status, role())
+            && (role() != 'MECHANIC' || request.auth.uid in request.resource.data.assignedMechanicIds)
+            // Who works a job is a manager's call, and the crew has to be this
+            // workshop's own active mechanics -- a mechanic must never be able
+            // to write itself onto (or into someone else's) card.
+            && (resource.data.assignedMechanicIds == request.resource.data.assignedMechanicIds
+              || (isManager(resource.data.shopId)
+                && request.resource.data.assignedMechanicIds.size() == 1
+                && crewMemberOk(resource.data.shopId, request.resource.data.assignedMechanicIds[0])))
+          )
+        );
+
+      allow delete: if false;
+    }
+
+    // recordInventoryMovement and createWarranty used to be Cloud Functions.
+    // Both hinged on "a manager of this shop, acting on this shop's own
+    // records", which is expressible here; the stock arithmetic is checked
+    // against the item as it stands before the write, the same snapshot the
+    // app's transaction read.
+    function inventoryStaff() {
+      return active() && (role() == 'SHOP_OWNER' || role() == 'MANAGER');
+    }
+
+    function inventoryItemPath(id) {
+      return /databases/$(database)/documents/inventoryItems/$(id);
+    }
+
+    function inventoryMovementOk(shopId, itemId, type, quantity, delta) {
+      return exists(inventoryItemPath(itemId))
+        && get(inventoryItemPath(itemId)).data.shopId == shopId
+        && get(inventoryItemPath(itemId)).data.quantityOnHand + delta >= 0
+        && (
+          (type == 'STOCK_OUT' && delta == -quantity)
+          || (type == 'ADJUSTMENT' && delta == quantity - get(inventoryItemPath(itemId)).data.quantityOnHand)
+          || ((type == 'STOCK_IN' || type == 'RETURN') && delta == quantity)
+        );
+    }
+
+    // createWarranty only accepted a COMPLETED card. Widened to the finished
+    // states, because a workshop usually hands the vehicle over (READY_FOR_PICKUP
+    // or CLOSED) before it writes the warranty up, and denying it there would
+    // just lock the record out of its own shop.
+    function completedJobCardInShop(jobCardId, shopId) {
+      return exists(/databases/$(database)/documents/jobCards/$(jobCardId))
+        && get(/databases/$(database)/documents/jobCards/$(jobCardId)).data.shopId == shopId
+        && (get(/databases/$(database)/documents/jobCards/$(jobCardId)).data.status == 'COMPLETED'
+          || get(/databases/$(database)/documents/jobCards/$(jobCardId)).data.status == 'READY_FOR_PICKUP'
+          || get(/databases/$(database)/documents/jobCards/$(jobCardId)).data.status == 'CLOSED');
     }
 
     match /inventoryItems/{inventoryItemId} {
       allow read: if signedIn() && hasShop(resource.data.shopId);
-      allow create: if isManager(request.resource.data.shopId);
-      allow update, delete: if false;
+      allow create: if inventoryStaff()
+        && hasShop(request.resource.data.shopId)
+        && request.resource.data.inventoryItemId == inventoryItemId
+        && request.resource.data.sku is string
+        && request.resource.data.sku.size() > 0
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.quantityOnHand == 0;
+
+      // Only a movement may move the stock figure, and never below zero. The
+      // identity pins guard the fields a workshop must not rewrite after the
+      // fact; they tolerate a document written before the app started copying
+      // its own id into `inventoryItemId`, because reading an absent field
+      // aborts the whole rule rather than denying it.
+      allow update: if inventoryStaff()
+        && hasShop(resource.data.shopId)
+        && request.resource.data.shopId == resource.data.shopId
+        && request.resource.data.sku == resource.data.sku
+        && (!('inventoryItemId' in resource.data)
+          || request.resource.data.inventoryItemId == resource.data.inventoryItemId)
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['quantityOnHand', 'updatedAt'])
+        && request.resource.data.quantityOnHand is int
+        && request.resource.data.quantityOnHand >= 0;
+
+      allow delete: if false;
     }
 
     match /inventoryMovements/{movementId} {
       allow read: if signedIn() && hasShop(resource.data.shopId);
-      allow write: if false;
+      allow create: if inventoryStaff()
+        && hasShop(request.resource.data.shopId)
+        && request.resource.data.actorUid == request.auth.uid
+        && request.resource.data.quantity is int
+        && request.resource.data.quantity >= 1
+        && request.resource.data.delta is int
+        && request.resource.data.reason is string
+        && request.resource.data.reason.size() > 0
+        && (request.resource.data.type == 'STOCK_IN'
+          || request.resource.data.type == 'STOCK_OUT'
+          || request.resource.data.type == 'ADJUSTMENT'
+          || request.resource.data.type == 'RETURN')
+        && inventoryMovementOk(request.resource.data.shopId, request.resource.data.inventoryItemId,
+          request.resource.data.type, request.resource.data.quantity, request.resource.data.delta);
+
+      // The stock ledger is append-only.
+      allow update, delete: if false;
     }
 
     match /warranties/{warrantyId} {
       allow read: if signedIn() && hasShop(resource.data.shopId);
-      allow write: if false;
+      allow create: if inventoryStaff()
+        && hasShop(request.resource.data.shopId)
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.status == 'ACTIVE'
+        && request.resource.data.durationMonths is int
+        && request.resource.data.durationMonths >= 1
+        && request.resource.data.durationMonths <= 120
+        && request.resource.data.terms is string
+        && request.resource.data.terms.size() > 0
+        && request.resource.data.customerId is string
+        && request.resource.data.customerId.size() > 0
+        && request.resource.data.vehicleId is string
+        && request.resource.data.vehicleId.size() > 0
+        && completedJobCardInShop(request.resource.data.jobCardId, request.resource.data.shopId)
+        && request.resource.data.startDate is timestamp
+        && request.resource.data.expiryDate is timestamp
+        && request.resource.data.expiryDate > request.resource.data.startDate;
+
+      allow update, delete: if false;
+    }
+
+    // Free-plan builds have no Cloud Functions, so createInvoice and
+    // receivePayment are replaced by direct writes guarded here. The money
+    // arithmetic the two functions did is re-stated as invariants the server
+    // checks on every write; a client can only ever mis-price its own shop's
+    // invoices, never another workshop's, and cannot skip the ledger rules.
+    function billingStaff() {
+      return active() && (role() == 'SHOP_OWNER' || role() == 'MANAGER' || role() == 'FRONT_DESK');
+    }
+
+    function invoiceInShop(invoiceId, shopId) {
+      return exists(/databases/$(database)/documents/invoices/$(invoiceId))
+        && get(/databases/$(database)/documents/invoices/$(invoiceId)).data.shopId == shopId;
+    }
+
+    function jobCardInShop(jobCardId, shopId) {
+      return exists(/databases/$(database)/documents/jobCards/$(jobCardId))
+        && get(/databases/$(database)/documents/jobCards/$(jobCardId)).data.shopId == shopId;
+    }
+
+    // Rules CEL has no list comprehension macro, so the per-line totals the
+    // function summed cannot be re-added here. The header arithmetic that the
+    // app reads back (total, balance, paid) is pinned instead.
+    function invoiceLedgerOk(data) {
+      return data.totalMinorUnits == data.subtotalMinorUnits - data.discountMinorUnits + data.taxMinorUnits
+        && data.totalMinorUnits >= 0
+        && data.amountPaidMinorUnits >= 0
+        && data.amountPaidMinorUnits <= data.totalMinorUnits
+        && data.balanceMinorUnits == data.totalMinorUnits - data.amountPaidMinorUnits;
     }
 
     match /invoices/{invoiceId} {
       allow read: if signedIn() && hasShop(resource.data.shopId);
-      allow write: if false;
+
+      allow create: if billingStaff()
+        && hasShop(request.resource.data.shopId)
+        && request.resource.data.invoiceNumber is string
+        && request.resource.data.invoiceNumber.size() > 0
+        && request.resource.data.createdBy == request.auth.uid
+        && jobCardInShop(request.resource.data.jobCardId, request.resource.data.shopId)
+        && request.resource.data.customerId is string
+        && request.resource.data.customerId.size() > 0
+        && request.resource.data.vehicleId is string
+        && request.resource.data.vehicleId.size() > 0
+        && request.resource.data.items is list
+        && request.resource.data.items.size() > 0
+        && request.resource.data.status == 'ISSUED'
+        && request.resource.data.amountPaidMinorUnits == 0
+        && invoiceLedgerOk(request.resource.data);
+
+      // An issued invoice is a legal record: only a payment may change it, and
+      // the change must move the ledger forward to PARTIALLY_PAID or PAID.
+      allow update: if billingStaff()
+        && hasShop(resource.data.shopId)
+        && request.resource.data.shopId == resource.data.shopId
+        && request.resource.data.invoiceNumber == resource.data.invoiceNumber
+        && request.resource.data.jobCardId == resource.data.jobCardId
+        && request.resource.data.customerId == resource.data.customerId
+        && request.resource.data.vehicleId == resource.data.vehicleId
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.items == resource.data.items
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['amountPaidMinorUnits', 'balanceMinorUnits', 'status', 'updatedAt'])
+        && resource.data.status != 'VOID'
+        && resource.data.status != 'PAID'
+        && invoiceLedgerOk(resource.data)
+        && invoiceLedgerOk(request.resource.data)
+        && request.resource.data.amountPaidMinorUnits > resource.data.amountPaidMinorUnits
+        && (
+          (request.resource.data.status == 'PAID' && request.resource.data.balanceMinorUnits == 0)
+          || (request.resource.data.status == 'PARTIALLY_PAID' && request.resource.data.balanceMinorUnits > 0)
+        );
+
+      allow delete: if false;
     }
 
     match /payments/{paymentId} {
       allow read: if signedIn() && hasShop(resource.data.shopId);
-      allow write: if false;
+
+      // Rules are evaluated per document, so the companion invoice update in
+      // the same batch is not visible here: the balance read is the one from
+      // before the payment landed, which is exactly the ceiling to enforce.
+      allow create: if billingStaff()
+        && hasShop(request.resource.data.shopId)
+        && request.resource.data.receivedBy == request.auth.uid
+        && invoiceInShop(request.resource.data.invoiceId, request.resource.data.shopId)
+        && get(/databases/$(database)/documents/invoices/$(request.resource.data.invoiceId)).data.status != 'VOID'
+        && request.resource.data.amountMinorUnits is int
+        && request.resource.data.amountMinorUnits > 0
+        && request.resource.data.amountMinorUnits
+          <= get(/databases/$(database)/documents/invoices/$(request.resource.data.invoiceId)).data.balanceMinorUnits
+        && (request.resource.data.method == 'CASH'
+          || request.resource.data.method == 'CARD'
+          || request.resource.data.method == 'BANK_TRANSFER'
+          || request.resource.data.method == 'MOBILE_PAYMENT'
+          || request.resource.data.method == 'OTHER')
+        && request.resource.data.reference is string;
+
+      allow update, delete: if false;
     }
 
     match /auditLogs/{auditId} {

@@ -1,19 +1,14 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:cloud_functions/cloud_functions.dart';
 
 import '../../../core/errors/localized_failure.dart';
 import '../domain/job_card.dart';
 import '../domain/job_card_repository.dart';
 
 class FirebaseJobCardRepository implements JobCardRepository {
-  FirebaseJobCardRepository({
-    FirebaseFirestore? firestore,
-    FirebaseFunctions? functions,
-  })  : _firestore = firestore ?? FirebaseFirestore.instance,
-        _functions = functions ?? FirebaseFunctions.instance;
+  FirebaseJobCardRepository({FirebaseFirestore? firestore})
+      : _firestore = firestore ?? FirebaseFirestore.instance;
 
   final FirebaseFirestore _firestore;
-  final FirebaseFunctions _functions;
 
   @override
   Stream<List<JobCard>> watchJobCards(String shopId) {
@@ -41,14 +36,23 @@ class FirebaseJobCardRepository implements JobCardRepository {
     required String jobCardId,
     required JobCardStatus target,
   }) async {
+    final reference = _firestore.collection('jobCards').doc(jobCardId);
+    final milestone = switch (target.value) {
+      'OPEN' => 'openedAt',
+      'IN_PROGRESS' => 'startedAt',
+      'COMPLETED' => 'completedAt',
+      'CLOSED' => 'closedAt',
+      _ => null,
+    };
     try {
-      final result = await _functions.httpsCallable('transitionJobCard').call({
-        'shopId': shopId,
-        'jobCardId': jobCardId,
-        'targetStatus': target.value,
+      await reference.update({
+        'status': target.value,
+        'updatedAt': FieldValue.serverTimestamp(),
+        if (milestone != null) milestone: FieldValue.serverTimestamp(),
       });
-      return JobCard.fromMap(jobCardId, _mapTimestamps(Map<String, dynamic>.from(result.data as Map)));
-    } on FirebaseFunctionsException catch (error) {
+      final snapshot = await reference.get();
+      return JobCard.fromMap(jobCardId, _mapTimestamps(snapshot.data() ?? const <String, dynamic>{}));
+    } on FirebaseException catch (error) {
       final failure = _failureForCode(error.code);
       throw JobCardFailure(failure.message, messageKey: failure.messageKey);
     }
@@ -57,12 +61,12 @@ class FirebaseJobCardRepository implements JobCardRepository {
   @override
   Future<void> assignMechanic({required String shopId, required String jobCardId, required String mechanicUid}) async {
     try {
-      await _functions.httpsCallable('assignJobCard').call({
-        'shopId': shopId,
-        'jobCardId': jobCardId,
-        'mechanicUid': mechanicUid.trim(),
+      await _firestore.collection('jobCards').doc(jobCardId).update({
+        'assignedMechanicIds': [mechanicUid.trim()],
+        'status': 'ASSIGNED',
+        'updatedAt': FieldValue.serverTimestamp(),
       });
-    } on FirebaseFunctionsException catch (error) {
+    } on FirebaseException catch (error) {
       final failure = _failureForCode(error.code);
       throw JobCardFailure(failure.message, messageKey: failure.messageKey);
     }
@@ -76,13 +80,12 @@ class FirebaseJobCardRepository implements JobCardRepository {
     String? diagnosis,
   }) async {
     try {
-      await _functions.httpsCallable('updateJobCardWork').call({
-        'shopId': shopId,
-        'jobCardId': jobCardId,
-        'notes': notes,
+      await _firestore.collection('jobCards').doc(jobCardId).update({
+        'repairNotes': notes,
         'diagnosis': diagnosis,
+        'updatedAt': FieldValue.serverTimestamp(),
       });
-    } on FirebaseFunctionsException catch (error) {
+    } on FirebaseException catch (error) {
       final failure = _failureForCode(error.code);
       throw JobCardFailure(failure.message, messageKey: failure.messageKey);
     }

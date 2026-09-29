@@ -386,6 +386,12 @@ abstract class AppLocalizations {
   /// **'Some changes need attention before retrying.'**
   String get syncDescFailed;
 
+  /// No description provided for @retry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get retry;
+
   /// No description provided for @languageMenuLabel.
   ///
   /// In en, this message translates to:
@@ -686,11 +692,29 @@ abstract class AppLocalizations {
   /// **'Covers workmanship and replaced parts under workshop warranty terms.'**
   String get warrantyDefaultTerms;
 
-  /// No description provided for @warrantyCompletedJobIdLabel.
+  /// No description provided for @warrantyCompletedJobLabel.
   ///
   /// In en, this message translates to:
-  /// **'Completed job card ID'**
-  String get warrantyCompletedJobIdLabel;
+  /// **'Completed job card'**
+  String get warrantyCompletedJobLabel;
+
+  /// No description provided for @warrantyNoFinishedJobs.
+  ///
+  /// In en, this message translates to:
+  /// **'Complete a job card before creating a warranty.'**
+  String get warrantyNoFinishedJobs;
+
+  /// No description provided for @warrantyCustomerLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Customer {customerId}'**
+  String warrantyCustomerLabel(Object customerId);
+
+  /// No description provided for @warrantyVehicleLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Vehicle {vehicleId}'**
+  String warrantyVehicleLabel(Object vehicleId);
 
   /// No description provided for @warrantyDurationLabel.
   ///
@@ -899,8 +923,14 @@ abstract class AppLocalizations {
   /// No description provided for @billingJobCardIdLabel.
   ///
   /// In en, this message translates to:
-  /// **'Job card ID'**
+  /// **'Job card'**
   String get billingJobCardIdLabel;
+
+  /// No description provided for @billingNoJobCards.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a job card before issuing an invoice.'**
+  String get billingNoJobCards;
 
   /// No description provided for @billingItemTypeLabel.
   ///

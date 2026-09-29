@@ -155,18 +155,26 @@ class FirebaseAuthRepository implements AuthRepository {
     if (user == null) return null;
 
     Map<String, dynamic> profile = const {};
+    var profileMissing = false;
     try {
       final document = await _firestore.collection('users').doc(user.uid).get();
+      profileMissing = !document.exists;
       profile = document.data() ?? const {};
     } on FirebaseException {
-      // Firestore is unreachable; the claims below still render the shell.
+      // Firestore is unreachable or not yet readable; the claims below still
+      // render the shell.
+    }
+
+    if (profileMissing) {
+      final written = await _writeProfileFromClaims(user);
+      if (written != null) profile = written;
     }
 
     if (UserRoleLabel.fromClaim(profile['role']) == null) {
-      // An empty read means the profile is not in the local cache yet rather
-      // than genuinely absent, so fall back to the claims written when the
-      // account was created. Without this the owner silently loses staff
-      // management until the next auth event.
+      // An empty read can also mean the profile has not reached the local
+      // cache yet rather than genuinely absent, so fall back to the claims
+      // written when the account was created. Without this the owner silently
+      // loses staff management until the next auth event.
       final token = await user.getIdTokenResult();
       profile = {...?token.claims, ...profile};
     }
@@ -183,6 +191,37 @@ class FirebaseAuthRepository implements AuthRepository {
           : <String>{},
       isActive: profile['isActive'] != false,
     );
+  }
+
+  /// Creates the profile document for accounts that were granted their
+  /// authority as ID-token claims before those documents existed. The rules
+  /// accept a self-write only when it mirrors the claims exactly, so this
+  /// restores access without a Admin SDK and without new privileges.
+  Future<Map<String, dynamic>?> _writeProfileFromClaims(User user) async {
+    final token = await user.getIdTokenResult();
+    final claims = token.claims;
+    final role = UserRoleLabel.fromClaim(claims?['role']);
+    final shopId = claims?['shopId'];
+    if (claims == null || role == null || shopId is! String || claims['isActive'] == false) {
+      return null;
+    }
+
+    final profile = <String, dynamic>{
+      'uid': user.uid,
+      'email': user.email,
+      'name': claims['name'] ?? user.displayName,
+      'role': claims['role'],
+      'shopId': shopId,
+      'permissions': const <String>[],
+      'isActive': true,
+      'createdAt': FieldValue.serverTimestamp(),
+    };
+    try {
+      await _firestore.collection('users').doc(user.uid).set(profile);
+    } on FirebaseException {
+      return null;
+    }
+    return profile;
   }
 
   AuthUser _requireActive(AuthUser? user) {

@@ -162,6 +162,9 @@ class AppLocalizationsMy extends AppLocalizations {
       'ပြန်ကြိုးစားမည့်အချိန် မတိုင်မီ သတိပြုရန် လိုအပ်သော ပြောင်းလဲမှုများ ရှိပါသည်။';
 
   @override
+  String get retry => 'ပြန်ကြိုးစားရန်';
+
+  @override
   String get languageMenuLabel => 'ဘာသာစကား ပြောင်းလဲရန်';
 
   @override
@@ -317,7 +320,21 @@ class AppLocalizationsMy extends AppLocalizations {
       'လုပ်ကိုင်မှု အရည်အသွေးနှင့် အစားထိုးထားသော အပိုပစ္စည်းများကို ဆိုင်၏ အာမခံစည်းကမ်းများအရ အာမခံထားသည်။';
 
   @override
-  String get warrantyCompletedJobIdLabel => 'ပြီးဆုံးအလုပ်စာရွက် ID';
+  String get warrantyCompletedJobLabel => 'ပြီးဆုံးအလုပ်စာရွက်';
+
+  @override
+  String get warrantyNoFinishedJobs =>
+      'အာမခံ ဖန်တီးမီ အလုပ်စာရွက် တစ်ခုကို အပြီးသတ်ပါ။';
+
+  @override
+  String warrantyCustomerLabel(Object customerId) {
+    return 'ဖောက်သည် $customerId';
+  }
+
+  @override
+  String warrantyVehicleLabel(Object vehicleId) {
+    return 'ယာဉ် $vehicleId';
+  }
 
   @override
   String get warrantyDurationLabel => 'ကာလ';
@@ -436,7 +453,11 @@ class AppLocalizationsMy extends AppLocalizations {
   String get billingCreateTitle => 'ငွေတောင်းခံလွှာ ဖန်တီးရန်';
 
   @override
-  String get billingJobCardIdLabel => 'အလုပ်စာရွက် ID';
+  String get billingJobCardIdLabel => 'အလုပ်စာရွက်';
+
+  @override
+  String get billingNoJobCards =>
+      'ငွေတောင်းခံလွှာ ထုတ်မီ အလုပ်စာရွက် တစ်ခု ဖန်တီးပါ။';
 
   @override
   String get billingItemTypeLabel => 'ပစ္စည်းအမျိုးအစား';

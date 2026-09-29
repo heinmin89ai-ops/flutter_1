@@ -24,6 +24,7 @@ import '../../features/reports/presentation/reports_page.dart';
 import '../../l10n/app_localizations.dart';
 import '../localization/app_locale.dart';
 import '../localization/enum_l10n.dart';
+import '../widgets/dismiss_safe_dialog.dart';
 
 enum ShellSection {
   dashboard,
@@ -93,7 +94,6 @@ class AppShell extends StatefulWidget {
 }
 
 class _AppShellState extends State<AppShell> {
-  final _scaffoldKey = GlobalKey<ScaffoldState>();
   int _selectedIndex = 0;
   SyncStatus _syncStatus = SyncStatus.pending;
 
@@ -133,8 +133,8 @@ class _AppShellState extends State<AppShell> {
     final nextController = TextEditingController();
     final formKey = GlobalKey<FormState>();
     String? failureText;
-    await showDialog<void>(
-      context: context,
+    await showDialogUntilDismissed(
+      context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) {
           final error = failureText;
@@ -211,10 +211,10 @@ class _AppShellState extends State<AppShell> {
     final selectedSection = sections[_selectedIndex];
 
     return Scaffold(
-      key: _scaffoldKey,
       appBar: AppBar(
         title: Text(selectedSection.label(l10n)),
-        actions: [          _SyncStatusButton(
+        actions: [
+          _SyncStatusButton(
             status: _syncStatus,
             onPressed: _cycleSyncStatus,
           ),
@@ -297,8 +297,8 @@ class _AppShellState extends State<AppShell> {
               ShellSection.vehicles => VehiclesPage(user: widget.user, repository: widget.customerVehicleRepository),
               ShellSection.jobCards => JobCardsPage(user: widget.user, repository: widget.jobCardRepository),
               ShellSection.inventory => InventoryPage(user: widget.user, repository: widget.inventoryRepository),
-              ShellSection.warranty => WarrantyPage(user: widget.user, repository: widget.warrantyRepository),
-              ShellSection.billing => BillingPage(user: widget.user, repository: widget.billingRepository),
+              ShellSection.warranty => WarrantyPage(user: widget.user, repository: widget.warrantyRepository, jobCardRepository: widget.jobCardRepository),
+              ShellSection.billing => BillingPage(user: widget.user, repository: widget.billingRepository, jobCardRepository: widget.jobCardRepository),
               ShellSection.reports => ReportsPage(user: widget.user, repository: widget.reportRepository),
               ShellSection.shops => ShopsPage(
                 user: widget.user,
@@ -309,21 +309,21 @@ class _AppShellState extends State<AppShell> {
           ),
         ],
       ),
-      // Eight sections do not fit in a bottom bar without their labels
-      // wrapping, so phones get a labelled drawer instead.
-      drawer: isWide
+      // Eight sections do not fit in the equal-width slots of a NavigationBar
+      // on a phone, so the selected one is given a wider slot and the rest
+      // stay as icons.
+      bottomNavigationBar: isWide
           ? null
-          : _SectionDrawer(
+          : SectionNavBar(
               sections: sections,
-              selected: selectedSection,
-              onSelected: _selectDestination,
+              selectedIndex: _selectedIndex,
+              onDestinationSelected: _selectDestination,
             ),
     );
   }
 
   void _selectDestination(int index) {
     setState(() => _selectedIndex = index);
-    _scaffoldKey.currentState?.closeDrawer();
   }
 
   void _cycleSyncStatus() {
@@ -332,38 +332,6 @@ class _AppShellState extends State<AppShell> {
 
   void _syncStatusChanged() {
     if (mounted && widget.syncEngine != null) setState(() => _syncStatus = widget.syncEngine!.status.value);
-  }
-}
-
-class _SectionDrawer extends StatelessWidget {
-  const _SectionDrawer({
-    required this.sections,
-    required this.selected,
-    required this.onSelected,
-  });
-
-  final List<ShellSection> sections;
-  final ShellSection selected;
-  final ValueChanged<int> onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    return Drawer(
-      child: SafeArea(
-        child: ListView(
-          children: [
-            for (var index = 0; index < sections.length; index++)
-              ListTile(
-                leading: Icon(sections[index].icon),
-                title: Text(sections[index].label(l10n)),
-                selected: sections[index] == selected,
-                onTap: () => onSelected(index),
-              ),
-          ],
-        ),
-      ),
-    );
   }
 }
 
@@ -393,6 +361,112 @@ class _SyncStatusButton extends StatelessWidget {
       child: isNarrow
           ? IconButton(onPressed: onPressed, icon: icon)
           : OutlinedButton.icon(onPressed: onPressed, icon: icon, label: Text(status.label(l10n))),
+    );
+  }
+}
+
+/// Compact bottom bar for phones. Only the selected section carries a label,
+/// and its slot is widened so the full section name stays readable.
+class SectionNavBar extends StatelessWidget {
+  const SectionNavBar({
+    super.key,
+    required this.sections,
+    required this.selectedIndex,
+    required this.onDestinationSelected,
+  });
+
+  final List<ShellSection> sections;
+  final int selectedIndex;
+  final ValueChanged<int> onDestinationSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return Material(
+      color: Theme.of(context).colorScheme.surface,
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          height: 72,
+          child: Row(
+            children: [
+              for (var index = 0; index < sections.length; index++)
+                Expanded(
+                  flex: index == selectedIndex ? 24 : 10,
+                  child: _SectionNavItem(
+                    section: sections[index],
+                    label: sections[index].label(l10n),
+                    selected: index == selectedIndex,
+                    onTap: () => onDestinationSelected(index),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SectionNavItem extends StatelessWidget {
+  const _SectionNavItem({
+    required this.section,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final ShellSection section;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return InkWell(
+      onTap: onTap,
+      child: Semantics(
+        // Unselected items show only an icon, so the name has to come from here.
+        selected: selected,
+        label: label,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              width: 32,
+              height: 32,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                // The highlight keeps the same size in both states so the icon
+                // never shifts as the slot width animates.
+                color: selected ? colors.secondaryContainer : Colors.transparent,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(
+                section.icon,
+                color: selected ? colors.onSecondaryContainer : colors.onSurfaceVariant,
+              ),
+            ),
+            if (selected) ...[
+              const SizedBox(height: 3),
+              ExcludeSemantics(
+                child: Text(
+                  label,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context)
+                      .textTheme
+                      .labelSmall
+                      ?.copyWith(color: colors.onSurface),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }

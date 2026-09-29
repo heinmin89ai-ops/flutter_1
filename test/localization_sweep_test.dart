@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -204,6 +202,26 @@ class _SeededJobCardRepository implements JobCardRepository {
       openedAt: DateTime(2026, 9, 20),
       updatedAt: DateTime(2026, 9, 26),
     ),
+    // A warranty can only back a finished job, so the seed needs one in that
+    // state for the create dialogs to open.
+    JobCard(
+      jobCardId: 'job-2',
+      shopId: 'shop-test',
+      jobNumber: 'JC-2026-0039',
+      customerId: 'cus-1',
+      vehicleId: 'veh-1',
+      status: JobCardStatus.completed,
+      priority: 'NORMAL',
+      complaint: 'Brake pedal sinking under hard braking',
+      diagnosis: 'Master cylinder seal worn',
+      repairNotes: 'Replaced master cylinder and bled the lines',
+      assignedMechanicIds: const ['mech-1'],
+      createdBy: 'test-owner',
+      approvedBy: 'test-owner',
+      grandTotalMinorUnits: 1850000,
+      openedAt: DateTime(2026, 9, 12),
+      updatedAt: DateTime(2026, 9, 14),
+    ),
   ]);
 }
 
@@ -351,10 +369,8 @@ Future<void> _launchOnPhone(WidgetTester tester, Locale locale, {InventoryReposi
 }
 
 Future<void> _openSection(WidgetTester tester, ShellSection section) async {
-  tester.state<ScaffoldState>(find.byType(Scaffold)).openDrawer();
-  await tester.pumpAndSettle();
   await tester.tap(
-    find.descendant(of: find.byType(Drawer), matching: find.byIcon(section.icon)),
+    find.descendant(of: find.byType(SectionNavBar), matching: find.byIcon(section.icon)),
   );
   await tester.pumpAndSettle();
 }
@@ -425,6 +441,49 @@ void main() {
       expect(find.byType(AlertDialog), findsNothing);
     });
 
+    testWidgets('a dismissed staff dialog releases nothing early in ${entry.name}', (tester) async {
+      final l10n = await AppLocalizations.delegate.load(entry.locale);
+      await _launchOnPhone(tester, entry.locale);
+      await _openSection(tester, ShellSection.shops);
+
+      await tester.tap(find.text(l10n.shopsAddStaff));
+      await tester.pumpAndSettle();
+      final fields = find.byType(TextFormField);
+      await tester.enterText(fields.at(0), 'Ko Win');
+      await tester.enterText(fields.at(1), 'win@example.com');
+      await tester.pump();
+
+      // Tapping the barrier is what the user does to back out of a half-filled
+      // form; the controllers may only go away once it has left the screen.
+      await tester.tapAt(const Offset(5, 5));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(tester.takeException(), isNull, reason: 'staff dialog dismissed mid-edit in ${entry.name}');
+    });
+
+    testWidgets('a create dialog releases its fields only once it is gone in ${entry.name}', (tester) async {
+      final l10n = await AppLocalizations.delegate.load(entry.locale);
+      await _launchOnPhone(tester, entry.locale);
+      await _openSection(tester, ShellSection.inventory);
+
+      await tester.tap(find.text(l10n.inventoryAddItem));
+      await tester.pumpAndSettle();
+      final fields = find.byType(TextFormField);
+      await tester.enterText(fields.at(0), 'Oil filter');
+      await tester.enterText(fields.at(1), 'OIL-1');
+      await tester.pump();
+
+      // Same shape as the staff dialog above: the route resolves on pop while
+      // the fade-out is still rebuilding the form, so a controller released
+      // there is heard from after it is gone.
+      await tester.tapAt(const Offset(5, 5));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(tester.takeException(), isNull, reason: 'inventory dialog dismissed mid-edit in ${entry.name}');
+    });
+
     testWidgets('account activation screen lays out cleanly in ${entry.name}', (tester) async {
       final l10n = await AppLocalizations.delegate.load(entry.locale);
       tester.view.physicalSize = const Size(360, 800) * 3;
@@ -488,11 +547,8 @@ void main() {
     final en = await AppLocalizations.delegate.load(const Locale('en'));
     await _launchOnPhone(tester, const Locale('en'), inventoryRepository: _FailingInventoryRepository());
 
-    tester.state<ScaffoldState>(find.byType(Scaffold)).openDrawer();
-    await tester.pumpAndSettle();
     await tester.tap(
-      find.descendant(of: find.byType(Drawer), matching: find.byIcon(ShellSection.inventory.icon)),
-      warnIfMissed: false,
+      find.descendant(of: find.byType(SectionNavBar), matching: find.byIcon(ShellSection.inventory.icon)),
     );
     await tester.pump();
     // Exhaust the re-subscribe attempts so the page settles on its error state.
@@ -503,5 +559,25 @@ void main() {
 
     expect(find.text(en.inventoryLoadError), findsOneWidget);
     expect(find.text(en.inventoryAddItem), findsOneWidget);
+  });
+
+  testWidgets('only the selected bottom bar section is labelled', (tester) async {
+    final en = await AppLocalizations.delegate.load(const Locale('en'));
+    await _launchOnPhone(tester, const Locale('en'));
+
+    for (final section in ShellSection.values) {
+      await _openSection(tester, section);
+
+      for (final other in ShellSection.values) {
+        expect(
+          find.descendant(
+            of: find.byType(SectionNavBar),
+            matching: find.text(other.label(en)),
+          ),
+          other == section ? findsOneWidget : findsNothing,
+          reason: '${other.name} label should only show while selected',
+        );
+      }
+    }
   });
 }

@@ -3,9 +3,10 @@ import 'package:uuid/uuid.dart';
 
 import '../../../app/localization/enum_l10n.dart';
 import '../../../app/widgets/load_failure.dart';
+import '../../../app/widgets/dismiss_safe_dialog.dart';
 import '../../../app/widgets/page_header.dart';
 import '../../../core/errors/localized_failure.dart';
-import '../../../core/firestore/resilient_query.dart';
+import '../../../core/firestore/retryable_query.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../auth/domain/auth_user.dart';
 import '../data/firebase_job_card_repository.dart';
@@ -23,9 +24,9 @@ class JobCardsPage extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final shopId = user.shopId;
     if (shopId == null) return Center(child: Text(l10n.noWorkshopAssigned));
-    return StreamBuilder<List<JobCard>>(
-      stream: resilientQuery(() => repository.watchJobCards(shopId)),
-      builder: (context, snapshot) {
+    return RetryableQuery<List<JobCard>>(
+      subscribe: () => repository.watchJobCards(shopId),
+      builder: (context, snapshot, retry) {
         if (!snapshot.hasData && !snapshot.hasError) return const Center(child: CircularProgressIndicator());
         var jobCards = snapshot.data ?? const <JobCard>[];
         if (user.role == UserRole.mechanic) {
@@ -37,6 +38,7 @@ class JobCardsPage extends StatelessWidget {
           shopId: shopId,
           jobCards: jobCards,
           loadFailed: snapshot.hasError,
+          onRetry: retry,
         );
       },
     );
@@ -50,6 +52,7 @@ class _JobCardsContent extends StatelessWidget {
     required this.shopId,
     required this.jobCards,
     this.loadFailed = false,
+    this.onRetry,
   });
 
   final AuthUser user;
@@ -57,6 +60,7 @@ class _JobCardsContent extends StatelessWidget {
   final String shopId;
   final List<JobCard> jobCards;
   final bool loadFailed;
+  final VoidCallback? onRetry;
 
   @override
   Widget build(BuildContext context) {
@@ -78,7 +82,7 @@ class _JobCardsContent extends StatelessWidget {
         ),
         const SizedBox(height: 24),
         if (loadFailed)
-          LoadFailure(message: l10n.jobCardsLoadError)
+          LoadFailure(message: l10n.jobCardsLoadError, onRetry: onRetry)
         else if (jobCards.isEmpty)
           Card(child: Padding(padding: const EdgeInsets.all(32), child: Center(child: Text(l10n.jobCardsEmpty))))
         else
@@ -95,8 +99,8 @@ class _JobCardsContent extends StatelessWidget {
     final formKey = GlobalKey<FormState>();
     var priority = 'NORMAL';
     try {
-      await showDialog<void>(
-        context: context,
+      await showDialogUntilDismissed(
+        context,
         builder: (dialogContext) => StatefulBuilder(
           builder: (context, setDialogState) => AlertDialog(
             title: Text(l10n.jobCardsCreateTitle),
@@ -254,8 +258,8 @@ class _JobCardTile extends StatelessWidget {
     final controller = TextEditingController();
     final formKey = GlobalKey<FormState>();
     try {
-      await showDialog<void>(
-        context: context,
+      await showDialogUntilDismissed(
+        context,
         builder: (dialogContext) => AlertDialog(
           title: Text(l10n.jobCardsAssignMechanic),
           content: Form(

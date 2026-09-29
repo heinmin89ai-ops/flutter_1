@@ -1,17 +1,15 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:cloud_functions/cloud_functions.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../../core/errors/localized_failure.dart';
 import '../domain/warranty.dart';
 import '../domain/warranty_repository.dart';
 
 class FirebaseWarrantyRepository implements WarrantyRepository {
-  FirebaseWarrantyRepository({FirebaseFirestore? firestore, FirebaseFunctions? functions})
-      : _firestore = firestore ?? FirebaseFirestore.instance,
-        _functions = functions ?? FirebaseFunctions.instance;
+  FirebaseWarrantyRepository({FirebaseFirestore? firestore})
+      : _firestore = firestore ?? FirebaseFirestore.instance;
 
   final FirebaseFirestore _firestore;
-  final FirebaseFunctions _functions;
 
   @override
   Stream<List<Warranty>> watchWarranties(String shopId) {
@@ -22,17 +20,28 @@ class FirebaseWarrantyRepository implements WarrantyRepository {
 
   @override
   Future<Warranty> createWarranty({required String shopId, required String jobCardId, required String vehicleId, required String customerId, required int durationMonths, required String terms}) async {
+    final reference = _firestore.collection('warranties').doc();
+    final startDate = DateTime.now();
+    final expiryDate = Warranty.calculateExpiry(startDate, durationMonths);
     try {
-      final result = await _functions.httpsCallable('createWarranty').call({
+      await reference.set(<String, Object?>{
+        'warrantyId': reference.id,
         'shopId': shopId,
-        'jobCardId': jobCardId,
-        'vehicleId': vehicleId,
-        'customerId': customerId,
+        'jobCardId': jobCardId.trim(),
+        'vehicleId': vehicleId.trim(),
+        'customerId': customerId.trim(),
+        'startDate': startDate,
         'durationMonths': durationMonths,
-        'terms': terms,
+        'expiryDate': expiryDate,
+        'terms': terms.trim(),
+        'status': 'ACTIVE',
+        'createdBy': FirebaseAuth.instance.currentUser?.uid ?? '',
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
       });
-      return Warranty.fromMap('server', _mapTimestamps(Map<String, dynamic>.from(result.data as Map)));
-    } on FirebaseFunctionsException catch (error) {
+      final snapshot = await reference.get();
+      return Warranty.fromMap(reference.id, _mapTimestamps(snapshot.data() ?? const <String, dynamic>{}));
+    } on FirebaseException catch (error) {
       final failure = _failureForCode(error.code);
       throw WarrantyFailure(failure.message, messageKey: failure.messageKey);
     }

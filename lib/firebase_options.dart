@@ -26,12 +26,9 @@ class DefaultFirebaseOptions {
       case TargetPlatform.android:
         return android;
       case TargetPlatform.iOS:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for ios - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return apple;
       case TargetPlatform.macOS:
-        return macos;
+        return apple;
       case TargetPlatform.windows:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for windows - '
@@ -49,7 +46,9 @@ class DefaultFirebaseOptions {
     }
   }
 
-  static const FirebaseOptions macos = FirebaseOptions(
+  // Firebase registers a single "ios" app per bundle id that covers both iOS
+  // and macOS, so both targets resolve to these same options.
+  static const FirebaseOptions apple = FirebaseOptions(
     apiKey: 'AIzaSyDt5HkXXlSNNbjN8pOhSYZXFtBnuB4utY4',
     appId: '1:1040483089154:ios:b1e7c0d5cbdcdfae79201b',
     messagingSenderId: '1040483089154',

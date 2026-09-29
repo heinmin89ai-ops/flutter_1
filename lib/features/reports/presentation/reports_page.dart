@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../app/widgets/load_failure.dart';
 import '../../../app/widgets/page_header.dart';
 import '../../../core/errors/localized_failure.dart';
 import '../../../l10n/app_localizations.dart';
@@ -37,7 +38,8 @@ class _ReportsPageState extends State<ReportsPage> {
       PageHeader(title: l10n.navReports, subtitle: l10n.reportsPageSubtitle),
       const SizedBox(height: 24),
       if (_loading) const LinearProgressIndicator(),
-      if (_error != null) Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+      if (_error != null)
+        LoadFailure(message: _error!, onRetry: _load),
       if (_report != null) _ReportContent(report: _report!),
     ]);
   }

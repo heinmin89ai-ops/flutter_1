@@ -1,30 +1,34 @@
 import 'package:flutter/material.dart';
 
 import '../../../app/localization/enum_l10n.dart';
+import '../../../app/widgets/dismiss_safe_dialog.dart';
 import '../../../app/widgets/load_failure.dart';
 import '../../../app/widgets/page_header.dart';
 import '../../../core/errors/localized_failure.dart';
-import '../../../core/firestore/resilient_query.dart';
+import '../../../core/firestore/retryable_query.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../auth/domain/auth_user.dart';
+import '../../job_cards/domain/job_card.dart';
+import '../../job_cards/domain/job_card_repository.dart';
 import '../data/firebase_billing_repository.dart';
 import '../domain/billing_repository.dart';
 import '../domain/invoice.dart';
 
 class BillingPage extends StatelessWidget {
-  const BillingPage({super.key, required this.user, required this.repository});
+  const BillingPage({super.key, required this.user, required this.repository, required this.jobCardRepository});
 
   final AuthUser user;
   final BillingRepository repository;
+  final JobCardRepository jobCardRepository;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final shopId = user.shopId;
     if (shopId == null) return Center(child: Text(l10n.noWorkshopAssigned));
-    return StreamBuilder<List<Invoice>>(
-      stream: resilientQuery(() => repository.watchInvoices(shopId)),
-      builder: (context, snapshot) {
+    return RetryableQuery<List<Invoice>>(
+      subscribe: () => repository.watchInvoices(shopId),
+      builder: (context, snapshot, retry) {
         if (!snapshot.hasData && !snapshot.hasError) return const Center(child: CircularProgressIndicator());
         final invoices = snapshot.data ?? const <Invoice>[];
         final canBill = user.role != UserRole.mechanic;
@@ -38,7 +42,7 @@ class BillingPage extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           if (snapshot.hasError)
-            LoadFailure(message: l10n.billingLoadError)
+            LoadFailure(message: l10n.billingLoadError, onRetry: retry)
           else if (invoices.isEmpty) Card(child: Padding(padding: const EdgeInsets.all(32), child: Center(child: Text(l10n.billingEmpty))))
           else ...invoices.map((invoice) => _InvoiceTile(invoice: invoice, canPay: canBill, onPayment: () => _receivePayment(context, shopId, invoice))),
         ]);
@@ -48,7 +52,21 @@ class BillingPage extends StatelessWidget {
 
   Future<void> _createInvoice(BuildContext context, String shopId) async {
     final l10n = AppLocalizations.of(context);
-    final job = TextEditingController();
+    List<JobCard> cards;
+    try {
+      cards = await jobCardRepository.watchJobCards(shopId).first;
+    } catch (_) {
+      if (!context.mounted) return;
+      _message(context, l10n.billingLoadError);
+      return;
+    }
+    if (!context.mounted) return;
+    if (cards.isEmpty) {
+      _message(context, l10n.billingNoJobCards);
+      return;
+    }
+    // The backend only accepts an invoice tied to a job card of this workshop,
+    // so the card is chosen from the shop's own list rather than typed in.
     final customer = TextEditingController();
     final vehicle = TextEditingController();
     final description = TextEditingController();
@@ -56,12 +74,13 @@ class BillingPage extends StatelessWidget {
     final price = TextEditingController();
     final tax = TextEditingController(text: '0');
     final formKey = GlobalKey<FormState>();
+    var jobCardId = cards.first.jobCardId;
     var type = InvoiceItemType.service;
     try {
-      await showDialog<void>(context: context, builder: (dialogContext) => StatefulBuilder(builder: (context, setDialogState) => AlertDialog(
+      await showDialogUntilDismissed(context, builder: (dialogContext) => StatefulBuilder(builder: (context, setDialogState) => AlertDialog(
         title: Text(l10n.billingCreateTitle),
         content: Form(key: formKey, child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
-          TextFormField(controller: job, decoration: InputDecoration(labelText: l10n.billingJobCardIdLabel), validator: (value) => _required(l10n, value)),
+          DropdownButtonFormField<String>(isExpanded: true, value: jobCardId, decoration: InputDecoration(labelText: l10n.billingJobCardIdLabel), items: cards.map((card) => DropdownMenuItem(value: card.jobCardId, child: Text(card.jobNumber))).toList(), onChanged: (value) => setDialogState(() => jobCardId = value ?? jobCardId)),
           const SizedBox(height: 12), TextFormField(controller: customer, decoration: InputDecoration(labelText: l10n.customerIdLabel), validator: (value) => _required(l10n, value)),
           const SizedBox(height: 12), TextFormField(controller: vehicle, decoration: InputDecoration(labelText: l10n.vehicleIdLabel), validator: (value) => _required(l10n, value)),
           const SizedBox(height: 12), DropdownButtonFormField<InvoiceItemType>(isExpanded: true,value: type, decoration: InputDecoration(labelText: l10n.billingItemTypeLabel), items: InvoiceItemType.values.map((value) => DropdownMenuItem(value: value, child: Text(value.localizedLabel(l10n)))).toList(), onChanged: (value) => setDialogState(() => type = value ?? type)),
@@ -73,12 +92,12 @@ class BillingPage extends StatelessWidget {
         actions: [TextButton(onPressed: () => Navigator.pop(dialogContext), child: Text(l10n.cancel)), FilledButton(onPressed: () async {
           if (!formKey.currentState!.validate()) return;
           try {
-            await repository.createInvoice(shopId: shopId, jobCardId: job.text.trim(), customerId: customer.text.trim(), vehicleId: vehicle.text.trim(), items: [InvoiceItem(type: type, description: description.text.trim(), quantity: int.parse(quantity.text), unitPriceMinorUnits: int.parse(price.text), discountMinorUnits: 0, taxMinorUnits: int.tryParse(tax.text) ?? 0)]);
+            await repository.createInvoice(shopId: shopId, jobCardId: jobCardId, customerId: customer.text.trim(), vehicleId: vehicle.text.trim(), items: [InvoiceItem(type: type, description: description.text.trim(), quantity: int.parse(quantity.text), unitPriceMinorUnits: int.parse(price.text), discountMinorUnits: 0, taxMinorUnits: int.tryParse(tax.text) ?? 0)]);
             if (dialogContext.mounted) Navigator.pop(dialogContext);
           } on BillingFailure catch (error) { if (dialogContext.mounted) _message(dialogContext, localizedFailureMessage(AppLocalizations.of(dialogContext), error)); }
         }, child: Text(l10n.create))],
       )));
-    } finally { job.dispose(); customer.dispose(); vehicle.dispose(); description.dispose(); quantity.dispose(); price.dispose(); tax.dispose(); }
+    } finally { customer.dispose(); vehicle.dispose(); description.dispose(); quantity.dispose(); price.dispose(); tax.dispose(); }
   }
 
   Future<void> _receivePayment(BuildContext context, String shopId, Invoice invoice) async {
@@ -88,7 +107,7 @@ class BillingPage extends StatelessWidget {
     var method = PaymentMethod.cash;
     final formKey = GlobalKey<FormState>();
     try {
-      await showDialog<void>(context: context, builder: (dialogContext) => StatefulBuilder(builder: (context, setDialogState) => AlertDialog(
+      await showDialogUntilDismissed(context, builder: (dialogContext) => StatefulBuilder(builder: (context, setDialogState) => AlertDialog(
         title: Text(l10n.billingReceivePaymentTitle(invoice.invoiceNumber)),
         content: Form(key: formKey, child: Column(mainAxisSize: MainAxisSize.min, children: [
           Text(l10n.billingBalanceLabel(invoice.balanceMinorUnits)),
